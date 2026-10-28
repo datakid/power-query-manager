@@ -1,0 +1,98 @@
+@font-face { font-family: 'Instrument Sans'; src: url('../public/fonts/instrument-sans.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url('../public/fonts/jetbrains-mono.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'Fraunces'; src: url('../public/fonts/fraunces-italic.woff2') format('woff2'); font-style: italic; font-weight: 300 700; font-display: swap; }
+
+:root {
+  --paper: #F8F5EF;
+  --surface: #FFFDF9;
+  --sunk: #F1EDE5;
+  --line: #E4DED3;
+  --line-strong: #D3CBBE;
+  --ink: #222830;
+  --ink-2: #4A505A;
+  --ink-3: #6B7079;
+  --heather: #5F4D73;
+  --heather-hover: #52426A;
+  --heather-soft: #EEE9F2;
+  --on-heather: #F8F5EF;
+  --lichen: #93AD84;
+  --lichen-ink: #4D6841;
+  --lichen-soft: #EAF0E5;
+  --flax: #E6D79A;
+  --flax-ink: #6E5E1E;
+  --flax-soft: #F7F1DA;
+  --clay: #B5705A;
+  --clay-ink: #94523F;
+  --clay-soft: #F6E6E0;
+  --tide: #6C9499;
+  --tide-ink: #3F6A70;
+  --tide-soft: #E3EEEF;
+
+  --f-ui: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-code: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --f-display: 'Fraunces', Georgia, serif;
+
+  --t-xs: 0.75rem;
+  --t-sm: 0.8125rem;
+  --t-md: 0.875rem;
+  --t-lg: 1rem;
+  --t-xl: 1.375rem;
+  --t-code: 0.8125rem;
+  --lh-code: 1.375rem;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+  --r-pill: 999px;
+
+  --shadow-float: 0 1px 2px rgb(34 40 48 / .06), 0 8px 24px rgb(34 40 48 / .08);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --d-fast: 120ms;
+  --d-panel: 180ms;
+  --rail-w: 248px;
+  --row-h: 28px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --paper: #17181C;
+  --surface: #1E2026;
+  --sunk: #131418;
+  --line: #2C2F37;
+  --line-strong: #3A3E48;
+  --ink: #ECE8E1;
+  --ink-2: #B9B5AE;
+  --ink-3: #8D8A85;
+  --heather: #B7A5CC;
+  --heather-hover: #C7B8D9;
+  --heather-soft: #2A2433;
+  --on-heather: #17181C;
+  --lichen: #93AD84;
+  --lichen-ink: #A9C39A;
+  --lichen-soft: #1F271C;
+  --flax: #E6D79A;
+  --flax-ink: #E6D79A;
+  --flax-soft: #2A261A;
+  --clay: #C98670;
+  --clay-ink: #E0A08B;
+  --clay-soft: #2E1F1A;
+  --tide: #86AEB3;
+  --tide-ink: #9CC2C6;
+  --tide-soft: #1A2729;
+  --shadow-float: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --d-fast: 0ms; --d-panel: 0ms; }
+}

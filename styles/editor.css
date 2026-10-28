@@ -1,0 +1,29 @@
+.editor-pane .ed-wrap { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: auto 1fr; overflow: hidden; }
+.ed-gutter { padding: var(--s-3) var(--s-2) var(--s-3) var(--s-3); background: var(--sunk); color: var(--ink-3); font: 400 var(--t-code)/var(--lh-code) var(--f-code); text-align: right; user-select: none; overflow: hidden; min-width: 48px; border-right: 1px solid var(--line); }
+.ed-gutter div { position: relative; padding-left: var(--s-3); }
+.ed-gutter div.err::before { content: ''; position: absolute; left: 0; top: 7px; width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--clay); }
+.ed-gutter div.cur { color: var(--ink); }
+.ed-stage { position: relative; overflow: hidden; }
+.ed-hl, .ed-ta { margin: 0; padding: var(--s-3) var(--s-4); font: 400 var(--t-code)/var(--lh-code) var(--f-code); font-variant-ligatures: none; tab-size: 4; white-space: pre; letter-spacing: 0; border: 0; }
+.ed-hl { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--ink); }
+.ed-hl-inner { min-width: 100%; }
+.ed-hl .ln { min-height: var(--lh-code); }
+.ed-ta { position: absolute; inset: 0; width: 100%; height: 100%; resize: none; outline: none; background: transparent; color: transparent; caret-color: var(--ink); overflow: auto; }
+.ed-ta::selection { background: color-mix(in srgb, var(--heather) 28%, transparent); color: transparent; }
+.ed-ta:focus-visible { outline: none; }
+.editor-pane:focus-within { border-color: var(--line-strong); }
+.ed-ta[readonly] { caret-color: transparent; }
+.tk-kw { color: var(--heather); font-weight: 600; }
+.tk-fn { color: var(--tide-ink); }
+.tk-qid { color: var(--ink-2); }
+.tk-str { color: var(--lichen-ink); }
+.tk-num { color: var(--clay-ink); }
+.tk-com { color: var(--ink-3); font-style: italic; }
+.tk-op { color: var(--ink-2); }
+.tk-err { text-decoration: underline wavy var(--clay); text-decoration-skip-ink: none; text-underline-offset: 3px; }
+.tk-match { background: var(--heather-soft); border-radius: 2px; box-shadow: 0 0 0 1px var(--line-strong); }
+.tk-find { background: var(--flax-soft); box-shadow: 0 0 0 1px var(--flax); border-radius: 2px; }
+.find-bar { position: absolute; top: var(--s-2); right: var(--s-3); z-index: 3; display: flex; gap: var(--s-1); align-items: center; padding: var(--s-1); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-float); font-size: var(--t-sm); }
+.find-bar input[type=text] { width: 160px; min-height: 28px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--sunk); padding: 0 var(--s-2); }
+.find-bar .count { color: var(--ink-3); min-width: 48px; text-align: center; }
+.find-bar .btn { min-height: 28px; }

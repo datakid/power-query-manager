@@ -1,0 +1,19 @@
+.grid { position: relative; flex: 1; min-height: 0; overflow: auto; font: 400 var(--t-code)/var(--row-h) var(--f-code); outline: none; }
+.grid:focus-visible { box-shadow: inset 0 0 0 2px var(--heather); }
+.g-head { position: sticky; top: 0; z-index: 2; display: flex; background: var(--sunk); border-bottom: 1px solid var(--line-strong); width: max-content; min-width: 100%; }
+.g-hcell { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); height: 36px; padding: 0 var(--s-2) 0 var(--s-3); border-right: 1px solid var(--line); font-family: var(--f-ui); font-size: var(--t-sm); font-weight: 600; color: var(--ink); cursor: pointer; overflow: hidden; background: none; border-top: 0; border-left: 0; border-bottom: 0; text-align: left; }
+.g-hcell:hover { background: var(--line); }
+.g-hcell .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-hcell .ty { font: 500 var(--t-xs)/1 var(--f-code); color: var(--ink-3); flex: none; }
+.g-hcell.idx, .g-cell.idx { width: 56px; justify-content: flex-end; color: var(--ink-3); cursor: default; font-family: var(--f-code); font-weight: 400; text-align: right; padding-right: var(--s-2); position: sticky; left: 0; background: var(--sunk); z-index: 1; }
+.g-body { position: relative; width: max-content; min-width: 100%; }
+.g-row { position: absolute; left: 0; display: flex; height: var(--row-h); border-bottom: 1px solid var(--line); width: max-content; min-width: 100%; }
+.g-row:hover .g-cell { background: color-mix(in srgb, var(--sunk) 60%, transparent); }
+.g-cell { flex: none; padding: 0 var(--s-3); border-right: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.g-cell.num { text-align: right; }
+.g-cell.null { color: var(--ink-3); font-style: italic; }
+.g-cell.err { color: var(--clay-ink); cursor: pointer; font-family: var(--f-ui); font-weight: 600; }
+.g-cell.nest { color: var(--tide-ink); cursor: pointer; font-family: var(--f-ui); font-weight: 600; }
+.g-cell.nest:hover, .g-cell.err:hover { text-decoration: underline; }
+.g-cell.sel { background: var(--heather-soft) !important; box-shadow: inset 0 0 0 1px var(--heather); }
+.g-cell.diff { background: var(--clay-soft) !important; box-shadow: inset 2px 0 0 var(--clay); }
