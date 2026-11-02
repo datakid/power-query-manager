@@ -165,6 +165,13 @@ export function runAll() {
     });
   }
 
+  const fontDir = join(root, 'public', 'fonts');
+  const cssText = all.filter((p) => extname(p) === '.css' && rel(p).startsWith('styles/')).map(read).join('\n');
+  for (const name of readdirSync(fontDir)) {
+    if (!/\.(woff2?|ttf|otf)$/i.test(name)) continue;
+    if (!new RegExp(`src:[^;]*url\\(["']?[^)]*fonts/${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\)`).test(cssText)) add('T-LINT-11', join(fontDir, name), 0, 'font file not referenced by an @font-face');
+  }
+
   const queryParamUses = [];
   for (const f of srcJs) {
     if (/location\.search|URLSearchParams/.test(read(f))) queryParamUses.push(rel(f));
