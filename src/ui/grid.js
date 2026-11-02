@@ -87,6 +87,7 @@ export class Grid {
     this.drag = false;
     this.loader = null;
     this.numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 15, useGrouping: false });
+    this.integerFormat = new Intl.NumberFormat('en-US');
     this.head = h('div', { class: 'grid-head', role: 'row' });
     this.body = h('div', { class: 'grid-body', role: 'rowgroup' });
     this.sizer = h('div', { class: 'grid-sizer' }, this.head, this.body);
@@ -104,8 +105,10 @@ export class Grid {
   setCulture(name) {
     try {
       this.numberFormat = new Intl.NumberFormat(name, { maximumFractionDigits: 15, useGrouping: false });
+      this.integerFormat = new Intl.NumberFormat(name);
     } catch {
       this.numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 15, useGrouping: false });
+      this.integerFormat = new Intl.NumberFormat('en-US');
     }
   }
 
@@ -280,6 +283,7 @@ export class Grid {
       if (this.isSelected(i, c)) classes.push('sel');
       if (this.active && this.active.r === i && this.active.c === c) classes.push('active');
       const attrs = { class: classes.join(' '), role: 'gridcell', id: `gc-${i}-${c}`, 'aria-colindex': String(c + 2) };
+      if (this.isSelected(i, c)) attrs['aria-selected'] = 'true';
       if (d.raw !== undefined && d.raw !== d.text) attrs.title = d.raw;
       if (diff) attrs.title = S.cellDiffTitle;
       const cell = h('div', attrs, d.text);
@@ -339,9 +343,20 @@ export class Grid {
     for (let r = this.sel.r1; r <= Math.min(this.sel.r2, this.sel.r1 + 20000); r += PAGE) this.rowAt(r);
   }
 
+  activateActive() {
+    const { r, c } = this.active;
+    const idx = this.order ? this.order[r] : r;
+    const row = this.cache.get(idx);
+    const v = row ? row[c] : undefined;
+    if (!v || typeof v !== 'object') return;
+    if (v.k === 'error') this.showError(v, this.el.querySelector(`#gc-${r}-${c}`) || this.el);
+    else if (['list', 'record', 'table'].includes(v.k) && this.onDrill) this.onDrill(v, S.drillLabel(this.columns[c].name, r + 1));
+  }
+
   onKey(ev) {
+    const navKeys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageDown', 'PageUp'];
     if (!this.active) {
-      if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(ev.key) && this.rowCount && this.columns.length) {
+      if (navKeys.includes(ev.key) && this.rowCount && this.columns.length) {
         this.active = { r: 0, c: 0 };
         this.anchor = { r: 0, c: 0 };
         this.sel = { r1: 0, r2: 0, c1: 0, c2: 0 };
@@ -350,11 +365,29 @@ export class Grid {
       }
       return;
     }
-    const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], PageDown: [Math.floor(this.el.clientHeight / ROW_H), 0], PageUp: [-Math.floor(this.el.clientHeight / ROW_H), 0], Home: [0, -Infinity], End: [0, Infinity] }[ev.key];
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      this.activateActive();
+      return;
+    }
+    const corner = ev.ctrlKey || ev.metaKey;
+    const rows = this.rowCount;
+    const cols = this.columns.length;
+    const page = Math.max(1, Math.floor(this.el.clientHeight / ROW_H));
+    const d = {
+      ArrowDown: [1, 0],
+      ArrowUp: [-1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+      PageDown: [page, 0],
+      PageUp: [-page, 0],
+      Home: corner ? [-rows, -cols] : [0, -cols],
+      End: corner ? [rows, cols] : [0, cols]
+    }[ev.key];
     if (!d) return;
     ev.preventDefault();
-    const r = Math.max(0, Math.min(this.rowCount - 1, this.active.r + d[0]));
-    const c = Math.max(0, Math.min(this.columns.length - 1, this.active.c + (Number.isFinite(d[1]) ? d[1] : d[1] < 0 ? -this.columns.length : this.columns.length)));
+    const r = Math.max(0, Math.min(rows - 1, this.active.r + d[0]));
+    const c = Math.max(0, Math.min(cols - 1, this.active.c + d[1]));
     if (ev.shiftKey) this.extend(r, c);
     else {
       this.active = { r, c };
@@ -401,11 +434,17 @@ export class Grid {
   openColumnMenu(c, anchor) {
     this.closeMenu();
     const col = this.columns[c];
-    const item = (label, fn, disabled) => h('button', { class: 'menu-item', type: 'button', role: 'menuitem', disabled: disabled ? true : null, onclick: () => {
+    const tooLarge = this.rowCount > SORT_LIMIT;
+    const item = (label, fn, blocked) => h('button', { class: 'menu-item', type: 'button', role: 'menuitem', 'aria-disabled': blocked ? true : null, onclick: () => {
+      if (blocked) return;
       this.closeMenu();
       fn();
     } }, label);
-    const menu = h('div', { class: 'menu', role: 'menu' }, item(S.sortAscending, () => this.sortBy(c, 1)), item(S.sortDescending, () => this.sortBy(c, -1)), item(S.copyColumnName, () => navigator.clipboard && navigator.clipboard.writeText(col.name)));
+    const menu = h('div', { class: 'menu', role: 'menu' },
+      item(S.sortAscending, () => this.sortBy(c, 1), tooLarge),
+      item(S.sortDescending, () => this.sortBy(c, -1), tooLarge),
+      tooLarge ? h('div', { class: 'menu-label', role: 'presentation' }, S.sortTooLarge(this.integerFormat.format(this.rowCount))) : null,
+      item(S.copyColumnName, () => navigator.clipboard && navigator.clipboard.writeText(col.name)));
     placeBelow(menu, anchor);
     this.menu = menu;
     this.menuOff = onOutside(menu, () => this.closeMenu());
@@ -432,7 +471,7 @@ export class Grid {
 
   async sortBy(c, dir) {
     if (this.rowCount > SORT_LIMIT) {
-      if (this.onNotice) this.onNotice(S.sortLimit);
+      if (this.onNotice) this.onNotice(S.sortTooLarge(this.integerFormat.format(this.rowCount)));
       return;
     }
     if (this.loader) {

@@ -40,7 +40,7 @@ export const S = {
   copyColumnName: 'Copy column name',
   sortAscending: 'Sort ascending',
   sortDescending: 'Sort descending',
-  sortLimit: 'Sorting is limited to 200,000 rows.',
+  sortTooLarge: (n) => `Sorting is available up to 200,000 rows. This result has ${n}.`,
   drillRoot: 'Result',
   stepsLabel: 'Steps',
   sources: 'Sources',
