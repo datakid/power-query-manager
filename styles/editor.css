@@ -48,6 +48,9 @@
   overflow: auto;
   letter-spacing: 0;
   word-spacing: 0;
+  font-variant-ligatures: none;
+  font-kerning: none;
+  font-variant-numeric: normal;
 }
 
 .code-area pre {

@@ -56,7 +56,9 @@ export class Editor {
 
   buildFindbar() {
     this.findInput = h('input', { type: 'text', 'aria-label': S.find, autocomplete: 'off' });
-    this.findCount = h('span', { class: 'item-meta', 'aria-live': 'polite' });
+    this.findCount = h('span', { class: 'item-meta' });
+    this.findLive = h('span', { class: 'sr-only', 'aria-live': 'polite' });
+    this.announceTimer = null;
     this.matchCaseBox = h('input', { type: 'checkbox', id: `mc-${Math.random().toString(36).slice(2)}` });
     const bar = h(
       'div',
@@ -65,7 +67,8 @@ export class Editor {
       h('button', { class: 'btn', type: 'button', 'aria-label': S.findPrev, onclick: () => this.stepFind(-1) }, '↑'),
       h('button', { class: 'btn', type: 'button', 'aria-label': S.findNext, onclick: () => this.stepFind(1) }, '↓'),
       h('label', { class: 'check', for: this.matchCaseBox.id }, this.matchCaseBox, S.matchCase),
-      this.findCount
+      this.findCount,
+      this.findLive
     );
     this.findInput.addEventListener('input', () => {
       this.findState.query = this.findInput.value;
@@ -388,7 +391,16 @@ export class Editor {
     this.findInput.select();
   }
 
+  announceFind(text) {
+    clearTimeout(this.announceTimer);
+    this.announceTimer = setTimeout(() => {
+      if (this.findLive.textContent !== text) this.findLive.textContent = text;
+    }, 300);
+  }
+
   closeFind() {
+    clearTimeout(this.announceTimer);
+    this.findLive.textContent = '';
     this.findState.open = false;
     this.findbar.hidden = true;
     this.findState.matches = [];
@@ -412,6 +424,7 @@ export class Editor {
     this.findState.matches = matches;
     this.findState.current = matches.length ? Math.min(Math.max(this.findState.current, 0), matches.length - 1) : -1;
     this.findCount.textContent = query ? (matches.length ? S.matchCount(this.findState.current + 1, matches.length) : S.noMatches) : '';
+    this.announceFind(this.findCount.textContent);
     if (jump && matches.length) this.revealMatch();
     this.paint();
   }
@@ -421,6 +434,7 @@ export class Editor {
     if (!n) return;
     this.findState.current = (this.findState.current + dir + n) % n;
     this.findCount.textContent = S.matchCount(this.findState.current + 1, n);
+    this.announceFind(this.findCount.textContent);
     this.revealMatch();
     this.paint();
   }
