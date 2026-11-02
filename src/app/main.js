@@ -138,13 +138,20 @@ export class App {
       const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
       if (f) this.openFile(f);
     });
-    window.addEventListener('beforeunload', (ev) => {
-      if (this.session.editCount > 0) {
-        ev.preventDefault();
-        ev.returnValue = S.unsavedLeave;
-      }
-    });
+    this.leaveGuard = (ev) => {
+      ev.preventDefault();
+      ev.returnValue = S.unsavedLeave;
+    };
+    this.guarding = false;
     window.addEventListener('keydown', (ev) => this.onKey(ev));
+  }
+
+  syncLeaveGuard() {
+    const dirty = this.session.editCount > 0;
+    if (dirty === this.guarding) return;
+    this.guarding = dirty;
+    if (dirty) window.addEventListener('beforeunload', this.leaveGuard);
+    else window.removeEventListener('beforeunload', this.leaveGuard);
   }
 
   onKey(ev) {
@@ -194,7 +201,9 @@ export class App {
     this.ws.onEdit(() => {
       this.status.set({ edits: this.session.editCount });
       this.downloadBtn.disabled = false;
+      this.syncLeaveGuard();
     });
+    this.syncLeaveGuard();
     this.fileBtn.textContent = file.name;
     this.fileBtn.hidden = false;
     this.exportBtn.hidden = false;

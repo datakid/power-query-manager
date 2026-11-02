@@ -11,7 +11,6 @@ self.addEventListener('install', (event) => {
       const m = await manifest();
       const cache = await caches.open(`${CACHE_PREFIX}${m.version}`);
       await cache.addAll(m.files);
-      self.skipWaiting();
     })()
   );
 });

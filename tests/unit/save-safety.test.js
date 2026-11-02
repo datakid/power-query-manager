@@ -16,3 +16,11 @@ test('T-B-04: a self-check failure rejects the save and returns no bytes', async
   );
   assert.equal(result, undefined);
 });
+
+test('T-B-05: the service worker does not take over open tabs on install', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { root } = await import('./helpers.js');
+  const text = readFileSync(`${root}/sw.js`, 'utf8');
+  assert.equal(/skipWaiting/.test(text), false);
+  assert.equal(/clients\.claim\(\)/.test(text), true);
+});
