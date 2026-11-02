@@ -1,8 +1,15 @@
+const STATE_ATTR = /^(aria-|contenteditable$|draggable$|spellcheck$)/;
+
 export function h(tag, attrs, ...children) {
   const el = document.createElement(tag);
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
-      if (v === undefined || v === null || v === false) continue;
+      if (v === undefined || v === null) continue;
+      if (typeof v === 'boolean' && STATE_ATTR.test(k)) {
+        el.setAttribute(k, String(v));
+        continue;
+      }
+      if (v === false) continue;
       if (k === 'class') el.className = v;
       else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
       else if (k === 'text') el.textContent = v;
