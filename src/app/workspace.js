@@ -163,7 +163,7 @@ export class Workspace {
           isFn ? h('span', { class: 'badge-fn', 'aria-hidden': 'true' }, S.functionBadge) : null,
           isFn ? h('span', { class: 'sr-only' }, S.asFunction) : null,
           edited ? h('span', { class: 'dot-edited', 'aria-hidden': 'true' }) : null,
-          edited ? h('span', { class: 'sr-only' }, S.asEdited) : null));
+          edited ? h('span', { class: 'sr-only sr-edited' }, S.asEdited) : null));
       li.addEventListener('click', () => this.select(item));
       li.addEventListener('keydown', (ev) => this.railKey(ev, li));
       if (extra) extra(li);
@@ -183,6 +183,9 @@ export class Workspace {
         const sub = h('ul', { role: 'group' });
         const folder = h('li', { role: 'treeitem', 'aria-expanded': 'true', class: 'tree-folder', tabindex: '-1', 'aria-label': S.folderAria(g) },
           h('span', { class: 'tree-item' }, h('span', { class: 'name' }, g)), sub);
+        folder.addEventListener('keydown', (ev) => {
+          if (ev.target === folder) this.railKey(ev, folder);
+        });
         folder.firstChild.addEventListener('click', () => {
           const open = folder.getAttribute('aria-expanded') !== 'true';
           folder.setAttribute('aria-expanded', String(open));
@@ -197,6 +200,37 @@ export class Workspace {
     for (const m of s.modules) tree.append(mk({ type: 'module', name: m.name }));
     if (!s.modules.length) tree.append(h('li', { role: 'presentation', class: 'item-meta rail-label' }, S.noMacros));
     this.rail.append(tree, keep);
+    this.syncRailSelection();
+  }
+
+  railItems() {
+    return [...this.rail.querySelectorAll('[role="treeitem"]')];
+  }
+
+  syncRailSelection() {
+    const all = this.railItems();
+    let stop = null;
+    for (const li of all) {
+      if (!li.dataset.name) continue;
+      const on = !!this.item && li.dataset.type === this.item.type && li.dataset.name === this.item.name;
+      li.setAttribute('aria-selected', String(on));
+      if (on) stop = li;
+    }
+    if (!stop) stop = all[0] || null;
+    for (const li of all) li.tabIndex = li === stop ? 0 : -1;
+  }
+
+  markEdited(item) {
+    const li = this.rail.querySelector(`[data-type="${item.type}"][data-name="${CSS.escape(item.name)}"] .tree-item`);
+    if (!li) return;
+    const edited = this.session.isEdited(item);
+    const dot = li.querySelector('.dot-edited');
+    if (edited && !dot) li.append(h('span', { class: 'dot-edited', 'aria-hidden': 'true' }), h('span', { class: 'sr-only sr-edited' }, S.asEdited));
+    else if (!edited && dot) {
+      dot.remove();
+      const label = li.querySelector('.sr-edited');
+      if (label) label.remove();
+    }
   }
 
   isFunction(q) {
@@ -213,18 +247,35 @@ export class Workspace {
   }
 
   railKey(ev, li) {
-    const all = [...this.rail.querySelectorAll('[role="treeitem"]')].filter((x) => x.offsetParent !== null);
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const all = this.railItems().filter((x) => x.offsetParent !== null);
     const i = all.indexOf(li);
-    if (ev.key === 'ArrowDown') {
-      if (all[i + 1]) all[i + 1].focus();
-      ev.preventDefault();
-    } else if (ev.key === 'ArrowUp') {
-      if (all[i - 1]) all[i - 1].focus();
-      ev.preventDefault();
-    } else if (ev.key === 'Enter' || ev.key === ' ') {
-      li.click();
-      ev.preventDefault();
-    }
+    const go = (j) => {
+      const target = all[Math.max(0, Math.min(all.length - 1, j))];
+      if (!target) return;
+      target.focus();
+      if (target.dataset.name) target.click();
+    };
+    if (ev.key === 'ArrowDown') go(i + 1);
+    else if (ev.key === 'ArrowUp') go(i - 1);
+    else if (ev.key === 'Home') go(0);
+    else if (ev.key === 'End') go(all.length - 1);
+    else if (ev.key === 'Enter' || ev.key === ' ') (li.dataset.name ? li : li.firstChild).click();
+    else if (ev.key.length === 1 && /\S/.test(ev.key)) {
+      const key = ev.key.toLowerCase();
+      const names = all.map((x) => (x.dataset.name || x.textContent || '').trim().toLowerCase());
+      let found = -1;
+      for (let k = 1; k <= all.length; k++) {
+        const j = (i + k) % all.length;
+        if (names[j].startsWith(key)) {
+          found = j;
+          break;
+        }
+      }
+      if (found < 0) return;
+      go(found);
+    } else return;
+    ev.preventDefault();
   }
 
   step(dir) {
@@ -251,7 +302,7 @@ export class Workspace {
     this.cancel();
     this.item = item;
     this.drillStack = [];
-    this.renderRail();
+    this.syncRailSelection();
     const s = this.session;
     const isQuery = item.type === 'query';
     this.main.classList.toggle('is-vba', !isQuery);
@@ -288,12 +339,7 @@ export class Workspace {
     const s = this.session;
     s.setText(this.item, text);
     this.revertBtn.hidden = !s.isEdited(this.item);
-    const li = this.rail.querySelector(`[data-type="${this.item.type}"][data-name="${CSS.escape(this.item.name)}"] .tree-item`);
-    if (li) {
-      const dot = li.querySelector('.dot-edited');
-      if (s.isEdited(this.item) && !dot) li.append(h('span', { class: 'dot-edited', 'aria-hidden': 'true' }));
-      else if (!s.isEdited(this.item) && dot) dot.remove();
-    }
+    this.markEdited(this.item);
     if (this.item.type === 'query') {
       clearTimeout(this.liveTimer);
       this.liveTimer = setTimeout(() => this.checkLive(text), 250);
@@ -316,7 +362,7 @@ export class Workspace {
     this.session.revert(this.item);
     this.editor.setText(this.session.textOf(this.item));
     this.revertBtn.hidden = true;
-    this.renderRail();
+    this.markEdited(this.item);
     if (this.item.type === 'query') this.checkLive(this.editor.getText());
     for (const fn of this.onEditCallbacks) fn();
   }
