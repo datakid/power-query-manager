@@ -89,9 +89,9 @@ export class App {
 
   build() {
     this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() });
-    this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', onclick: () => this.openExport() }, S.export);
+    this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
-    this.downloadBtn = h('button', { class: 'btn btn-primary', type: 'button', hidden: true, 'aria-haspopup': 'dialog', onclick: () => this.openDownload() }, S.download);
+    this.downloadBtn = h('button', { class: 'btn btn-primary', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, onclick: () => this.openDownload() }, S.download);
     this.topbar = h('header', { class: 'topbar' },
       h('h1', { class: 'brand' }, h('img', { src: 'public/mark.svg', alt: '', width: '24', height: '24' }), S.appName),
       this.fileBtn, h('span', { class: 'spacer' }), this.exportBtn, this.settingsBtn, this.downloadBtn);

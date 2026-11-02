@@ -54,8 +54,17 @@ export function onOutside(el, handler) {
 export function placeBelow(floating, anchor, align = 'left') {
   const r = anchor.getBoundingClientRect();
   floating.style.top = `${Math.round(r.bottom + 4)}px`;
+  floating.style.left = '0px';
   document.body.append(floating);
   const w = floating.offsetWidth;
+  const hgt = floating.offsetHeight;
+  const margin = 8;
+  let top = r.bottom + 4;
+  if (top + hgt > window.innerHeight - margin) {
+    const above = r.top - 4 - hgt;
+    top = above >= margin ? above : Math.max(margin, window.innerHeight - margin - hgt);
+  }
   const left = align === 'right' ? r.right - w : r.left;
-  floating.style.left = `${Math.max(8, Math.min(Math.round(left), window.innerWidth - w - 8))}px`;
+  floating.style.top = `${Math.round(top)}px`;
+  floating.style.left = `${Math.max(margin, Math.min(Math.round(left), window.innerWidth - w - margin))}px`;
 }

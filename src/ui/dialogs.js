@@ -2,6 +2,33 @@ import { h, clear, placeBelow, onOutside } from './dom.js';
 import { S, errorMessage } from './strings.js';
 import { supportedCultures } from '../core/m/culture.js';
 
+const layers = [];
+
+function openLayer(anchor, el, close) {
+  const layer = { el, close };
+  layers.push(layer);
+  if (anchor && anchor.hasAttribute('aria-haspopup')) anchor.setAttribute('aria-expanded', 'true');
+  return layer;
+}
+
+function closeLayer(layer, anchor, afterPointer) {
+  const at = layers.indexOf(layer);
+  if (at >= 0) layers.splice(at, 1);
+  const active = document.activeElement;
+  const lost = !active || active === document.body || layer.el.contains(active);
+  layer.el.remove();
+  if (anchor && anchor.hasAttribute('aria-haspopup')) anchor.setAttribute('aria-expanded', 'false');
+  if (!anchor) return;
+  if (afterPointer) {
+    setTimeout(() => {
+      const now = document.activeElement;
+      if ((!now || now === document.body) && anchor.isConnected) anchor.focus();
+    }, 0);
+  } else if (lost && anchor.isConnected) anchor.focus();
+}
+
+const isTop = (layer) => layers[layers.length - 1] === layer;
+
 export function openDialog(dialog) {
   document.body.append(dialog);
   dialog.addEventListener('close', () => dialog.remove());
@@ -105,25 +132,27 @@ export function menu(anchor, entries, onClose) {
     } }, e.label));
   }
   placeBelow(el, anchor, 'right');
-  const off = onOutside(el, () => close());
+  const layer = openLayer(anchor, el, () => close());
+  const off = onOutside(el, () => close(true));
   const key = (ev) => {
+    if (!isTop(layer)) return;
     if (ev.key === 'Escape') {
       ev.stopPropagation();
       close();
-      anchor.focus();
-    } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+    } else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp' || ev.key === 'Home' || ev.key === 'End') {
       const items = [...el.querySelectorAll('button:not([disabled]), input')];
       const i = items.indexOf(document.activeElement);
-      const next = items[(i + (ev.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length];
+      const step = ev.key === 'ArrowDown' ? 1 : ev.key === 'ArrowUp' ? -1 : 0;
+      const next = ev.key === 'Home' ? items[0] : ev.key === 'End' ? items[items.length - 1] : items[(i + step + items.length) % items.length];
       if (next) next.focus();
       ev.preventDefault();
     }
   };
   document.addEventListener('keydown', key, true);
-  function close() {
-    el.remove();
+  function close(afterPointer) {
     off();
     document.removeEventListener('keydown', key, true);
+    closeLayer(layer, anchor, afterPointer === true);
     if (onClose) onClose();
   }
   const first = el.querySelector('button:not([disabled]), input');
@@ -134,19 +163,20 @@ export function menu(anchor, entries, onClose) {
 export function popover(anchor, content, onClose, label) {
   const el = h('div', { class: 'popover', role: 'dialog', 'aria-label': label }, content);
   placeBelow(el, anchor, 'right');
-  const off = onOutside(el, () => close());
+  const layer = openLayer(anchor, el, () => close());
+  const off = onOutside(el, () => close(true));
   const key = (ev) => {
+    if (!isTop(layer)) return;
     if (ev.key === 'Escape') {
       ev.stopPropagation();
       close();
-      anchor.focus();
     }
   };
   document.addEventListener('keydown', key, true);
-  function close() {
-    el.remove();
+  function close(afterPointer) {
     off();
     document.removeEventListener('keydown', key, true);
+    closeLayer(layer, anchor, afterPointer === true);
     if (onClose) onClose();
   }
   return { el, close };
