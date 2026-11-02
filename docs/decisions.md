@@ -57,3 +57,7 @@ Table cells can hold lazy values so that one failing cell does not fail the tabl
 ## 14. Not built
 
 Print preview and page-break emulation (M5, marked optional in the spec) are not implemented. The lexer fuzz test runs 1,000 seeds of 4 KB and a few seeds of 1 MB, not 1,000 seeds of 1 MB.
+
+## 15. What counts as a change
+
+Query text is compared after trimming both ends through `normalizeQueryText` in `src/core/pq/section.js`; the session and the writer share that one function. VBA module text is compared exactly, without trimming, because leading whitespace and trailing blank lines are significant in a module.

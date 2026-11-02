@@ -2,12 +2,10 @@ import { openWorkbook } from '../core/workbook.js';
 import { buildWorkbook } from '../core/save.js';
 import { buildSnapshot, buildBindingWorkbook } from '../core/snapshot.js';
 import { checkSection, parseSection } from '../core/m/engine.js';
-import { rebuildSection } from '../core/pq/section.js';
+import { rebuildSection, normalizeQueryText } from '../core/pq/section.js';
 import { composeModuleText } from '../core/vba/writeback.js';
 import { suggestedFileName } from '../core/filename.js';
 import { QuoinError } from '../core/errors.js';
-
-const trimEnds = (s) => s.replace(/^\s+/, '').replace(/\s+$/, '');
 
 export class Session {
   constructor() {
@@ -59,7 +57,7 @@ export class Session {
 
   setText(item, text) {
     const edits = item.type === 'query' ? this.queryEdits : this.moduleEdits;
-    const norm = item.type === 'query' ? trimEnds(text) : text;
+    const norm = item.type === 'query' ? normalizeQueryText(text) : text;
     if (norm === this.originalText(item)) edits.delete(item.name);
     else edits.set(item.name, text);
   }
@@ -97,7 +95,7 @@ export class Session {
   currentSectionText() {
     const mashup = this.wb.mashup;
     const edits = new Map();
-    for (const [name, text] of this.queryEdits) edits.set(name, trimEnds(text));
+    for (const [name, text] of this.queryEdits) edits.set(name, normalizeQueryText(text));
     return rebuildSection(mashup.section.text, mashup.split.members.filter((m) => edits.has(m.name)), edits);
   }
 
