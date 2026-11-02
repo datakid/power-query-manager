@@ -65,7 +65,7 @@ export class Runner {
   }
 
   rows(start, count) {
-    return this.request({ type: 'rows', start, count }).then((m) => m.rows);
+    return this.request({ type: 'rows', start, count }).then((m) => (Array.isArray(m.rows) ? m.rows : []));
   }
 
   export(format, options) {
