@@ -54,3 +54,45 @@ test('T-B-08: a worker crash while rows are requested does not leave the request
   });
   expect(out).toBe('array');
 });
+
+test('T-B-09: the main thread stops a run that never answers and the runner stays usable', async ({ page }) => {
+  await openApp(page);
+  const out = await page.evaluate(async () => {
+    const { Runner } = await import('/src/app/runner.js');
+    const RealWorker = window.Worker;
+    const made = [];
+    let silent = true;
+    window.Worker = class {
+      constructor() {
+        this.terminated = false;
+        made.push(this);
+      }
+
+      postMessage(m) {
+        if (silent) return;
+        setTimeout(() => this.onmessage({ data: { type: 'result', id: m.id, status: 'ok' } }), 5);
+      }
+
+      terminate() {
+        this.terminated = true;
+      }
+    };
+    const runner = new Runner();
+    const started = performance.now();
+    const first = await runner.run({ limits: { timeoutMs: 100 } }, { onNeedBinding: async () => null });
+    const elapsed = performance.now() - started;
+    const stillRunning = runner.running;
+    silent = false;
+    const second = await runner.run({ limits: { timeoutMs: 100 } }, { onNeedBinding: async () => null });
+    window.Worker = RealWorker;
+    return { status: first.status, code: first.code, elapsed, terminated: made[0].terminated, stillRunning, second: second.status, workers: made.length };
+  });
+  expect(out.status).toBe('stopped');
+  expect(out.code).toBe('m.timeout');
+  expect(out.elapsed).toBeGreaterThan(2000);
+  expect(out.elapsed).toBeLessThan(3500);
+  expect(out.terminated).toBe(true);
+  expect(out.stillRunning).toBe(false);
+  expect(out.second).toBe('ok');
+  expect(out.workers).toBe(2);
+});
