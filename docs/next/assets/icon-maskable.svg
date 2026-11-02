@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="quoin">
+<rect x="0" y="0" width="128" height="128" fill="#111413"/>
+<g transform="translate(25.6 25.6) scale(1.2)">
+<rect x="10" y="10" width="44" height="44" rx="14" fill="none" stroke="#E6EAE4" stroke-width="8"/>
+<path d="M42 38H54a4 4 0 0 1 4 4v16H42a4 4 0 0 1-4-4V42a4 4 0 0 1 4-4Z" fill="#FFC21F"/>
+</g>
+</svg>

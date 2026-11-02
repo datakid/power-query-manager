@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>quoin identity preview</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+body { margin: 0; font: 14px/1.4 "Atkinson Hyperlegible Next", system-ui, sans-serif; }
+.row { padding: 24px; }
+.light { background: #DCE0DA; color: #111413; }
+.dark { background: #0D100F; color: #E6EAE4; }
+h2 { margin: 0 0 14px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; opacity: .7; }
+.icons { display: flex; align-items: flex-end; gap: 22px; }
+.circle { border-radius: 50%; }
+.wordmark { display: flex; align-items: center; gap: 8px; font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+.sw { display: flex; flex-wrap: wrap; }
+.sw span { width: 104px; height: 60px; display: flex; align-items: flex-end; padding: 6px; box-sizing: border-box; font: 11px ui-monospace, Menlo, Consolas, monospace; }
+.btns { display: flex; gap: 10px; align-items: center; }
+.btn { height: 32px; padding: 0 14px; border-radius: 6px; border: 0; font: inherit; font-size: 13px; }
+.primary { background: #FFC21F; color: #111413; }
+.secondary { background: transparent; border: 1px solid #768076; color: inherit; }
+.dark .secondary { border-color: #4A544E; }
+.strip { height: 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: #111413; color: #DCE0DA; font: 11px ui-monospace, Menlo, Consolas, monospace; }
+.dark .strip { background: #090B0A; }
+.chip { background: #D3ECE3; color: #13644E; padding: 2px 8px; border-radius: 3px; }
+.dark .chip { background: #0E3327; color: #4FC3A1; }
+</style>
+</head>
+<body>
+<section class="row light">
+  <h2>Mark on light · 16 24 32 48 64 96 · maskable in circle</h2>
+  <div class="icons">
+    <img src="favicon.svg" width="16" height="16" alt="16">
+    <img src="favicon.svg" width="24" height="24" alt="24">
+    <img src="favicon.svg" width="32" height="32" alt="32">
+    <img src="mark.svg" width="48" height="48" alt="48">
+    <img src="mark.svg" width="64" height="64" alt="64">
+    <img src="mark.svg" width="96" height="96" alt="96">
+    <img class="circle" src="icon-maskable.svg" width="96" height="96" alt="maskable">
+  </div>
+</section>
+<section class="row light">
+  <h2>Wordmark · buttons</h2>
+  <div class="wordmark"><img src="mark.svg" width="30" height="30" alt="">quoin</div>
+  <div class="btns" style="margin-top:14px">
+    <button class="btn primary">Run</button>
+    <button class="btn secondary">Download</button>
+    <button class="btn secondary">Print</button>
+  </div>
+</section>
+<section class="row light" style="padding-top:0">
+  <div class="strip"><span>Ran in 412 ms · 1,204 rows</span><span class="chip">matches Excel</span></div>
+</section>
+<section class="row light">
+  <h2>Light palette</h2>
+  <div class="sw">
+    <span style="background:#DCE0DA;color:#111413">ground</span>
+    <span style="background:#EBEEE8;color:#111413">surface</span>
+    <span style="background:#F7F8F5;color:#111413">raised</span>
+    <span style="background:#D0D5CE;color:#111413">sunk</span>
+    <span style="background:#FFC21F;color:#111413">sodium</span>
+    <span style="background:#2341C8;color:#fff">cobalt</span>
+    <span style="background:#C9400F;color:#fff">minium</span>
+    <span style="background:#1B7F63;color:#fff">patina</span>
+  </div>
+</section>
+<section class="row dark">
+  <h2>Mark on dark</h2>
+  <div class="icons">
+    <img src="favicon.svg" width="16" height="16" alt="16">
+    <img src="favicon.svg" width="24" height="24" alt="24">
+    <img src="favicon.svg" width="32" height="32" alt="32">
+    <img src="mark.svg" width="48" height="48" alt="48">
+    <img src="mark.svg" width="64" height="64" alt="64">
+    <img src="mark.svg" width="96" height="96" alt="96">
+    <img class="circle" src="icon-maskable.svg" width="96" height="96" alt="maskable">
+  </div>
+  <div class="wordmark" style="margin-top:18px"><img src="mark.svg" width="30" height="30" alt="">quoin</div>
+  <div class="btns" style="margin-top:14px">
+    <button class="btn primary">Run</button>
+    <button class="btn secondary">Download</button>
+  </div>
+  <div class="strip" style="margin-top:16px"><span>Ran in 412 ms · 1,204 rows</span><span class="chip">matches Excel</span></div>
+  <div class="sw" style="margin-top:16px">
+    <span style="background:#0D100F;color:#E6EAE4">ground</span>
+    <span style="background:#131716;color:#E6EAE4">surface</span>
+    <span style="background:#191E1C;color:#E6EAE4">raised</span>
+    <span style="background:#090B0A;color:#E6EAE4">sunk</span>
+    <span style="background:#FFC21F;color:#111413">sodium</span>
+    <span style="background:#8FA6FF;color:#0D100F">cobalt</span>
+    <span style="background:#FF8559;color:#0D100F">minium</span>
+    <span style="background:#4FC3A1;color:#0D100F">patina</span>
+  </div>
+</section>
+</body>
+</html>
