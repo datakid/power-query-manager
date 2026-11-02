@@ -4,7 +4,7 @@ import { buildSnapshot, buildBindingWorkbook } from '../core/snapshot.js';
 import { checkSection, parseSection } from '../core/m/engine.js';
 import { rebuildSection } from '../core/pq/section.js';
 import { composeModuleText } from '../core/vba/writeback.js';
-import { sanitizeFileName } from '../core/export/files.js';
+import { suggestedFileName } from '../core/filename.js';
 import { QuoinError } from '../core/errors.js';
 
 const trimEnds = (s) => s.replace(/^\s+/, '').replace(/\s+$/, '');
@@ -133,9 +133,7 @@ export class Session {
   }
 
   suggestedName() {
-    const base = (this.wb.fileName || 'workbook').replace(/\.[^.]*$/, '');
-    const ext = this.wb.vba ? 'xlsm' : this.wb.format === 'xlsm' || this.wb.format === 'xltm' ? this.wb.format : this.wb.format;
-    return sanitizeFileName(`${base} (edited).${ext}`, `.${ext}`);
+    return suggestedFileName(this.wb);
   }
 
   composeModule(name) {

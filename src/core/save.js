@@ -4,12 +4,9 @@ import { changedQueryEdits, writeQueryEdits } from './pq/writeback.js';
 import { writeVbaProject } from './vba/writeback.js';
 import { openWorkbook } from './workbook.js';
 import { equalBytes } from './bytes.js';
+import { suggestedFileName } from './filename.js';
 
-export function suggestedFileName(wb) {
-  const base = (wb.fileName || 'workbook').replace(/\.[^.]*$/, '');
-  const ext = wb.vba ? 'xlsm' : wb.format === 'xltx' || wb.format === 'xltm' ? wb.format : wb.format === 'xlsm' ? 'xlsm' : 'xlsx';
-  return `${base} (edited).${ext}`;
-}
+export { suggestedFileName };
 
 export function changedVbaEdits(wb, edits) {
   const out = new Map();
