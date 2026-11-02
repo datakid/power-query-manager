@@ -19,7 +19,15 @@ Then open `http://localhost:5173`. The app needs an origin because it uses a mod
 
 ## Deploying
 
-Any static host that serves over HTTPS works. Serve the files as they are (run `npm run build` first to refresh `asset-manifest.json`, which the service worker uses). Enable gzip or brotli: the first load is about 160 KB compressed and about 490 KB raw. Send the headers in `_headers` (Content-Security-Policy including `frame-ancestors`, Referrer-Policy, X-Content-Type-Options, Permissions-Policy). Browsers ignore `frame-ancestors` in a meta tag, so it must come from the host.
+`npm run build` writes the site to `dist/` and refreshes `asset-manifest.json`, which the service worker uses to cache the app for offline use. Publish the contents of `dist/` on any static host that serves over HTTPS, and turn on gzip or brotli: the first load is about 160 KB compressed and about 490 KB raw.
+
+The repository root is not the site root. Hosts that default to a folder named `public` will serve only the fonts and icons and answer 404 at `/`, so set the output directory to `dist`.
+
+- **Vercel:** `vercel.json` already sets the build command, the output directory and the security headers.
+- **Netlify or Cloudflare Pages:** build command `npm run build`, publish directory `dist`. The headers in `_headers` use their format.
+- **Anything else:** send the headers listed in `vercel.json`. Browsers ignore `frame-ancestors` in a meta tag, so it must come from the host.
+
+Remove the old prototype files (`js/`, `vendor/`, and any fonts in `public/fonts/` other than the Atkinson Hyperlegible Next and Commit Mono files). Everything under `public/` is cached by the service worker, so leftovers are downloaded for nothing.
 
 ## Supported files
 

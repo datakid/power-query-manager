@@ -7,7 +7,7 @@ const root = join(fileURLToPath(import.meta.url), '..', '..', '..');
 
 function walk(dir, out = []) {
   for (const name of readdirSync(dir)) {
-    if (name === 'node_modules' || name === '.git' || name === 'external' || name === 'workbooks' || name === 'expected') continue;
+    if (name === 'node_modules' || name === 'dist' || name === '.git' || name === 'external' || name === 'workbooks' || name === 'expected') continue;
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p, out);
     else out.push(p);
