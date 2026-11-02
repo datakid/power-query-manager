@@ -38,6 +38,25 @@ function visit(node, fn, parent = null) {
   }
 }
 
+function visitWithAncestors(node, fn, ancestors = []) {
+  if (!node || typeof node.type !== 'string') return;
+  fn(node, ancestors);
+  const next = [...ancestors, node];
+  for (const key of Object.keys(node)) {
+    const v = node[key];
+    if (Array.isArray(v)) v.forEach((c) => c && typeof c.type === 'string' && visitWithAncestors(c, fn, next));
+    else if (v && typeof v.type === 'string') visitWithAncestors(v, fn, next);
+  }
+}
+
+function containsThrow(node) {
+  let found = false;
+  visit(node, (n) => {
+    if (n.type === 'ThrowStatement') found = true;
+  });
+  return found;
+}
+
 export function runAll() {
   const findings = [];
   const add = (rule, file, line, msg) => findings.push({ rule, file: rel(file), line, msg });
@@ -164,6 +183,21 @@ export function runAll() {
       if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && ['setMessage'].includes(n.callee.property.name) && n.arguments[0] && n.arguments[0].type === 'Literal' && textLike(String(n.arguments[0].value))) add('T-LINT-9', f, n.loc.start.line, `message "${n.arguments[0].value}"`);
     });
   }
+
+  const selfCheckFiles = new Set();
+  for (const f of srcJs) {
+    const entry = parsed.get(f);
+    if (!entry) continue;
+    visitWithAncestors(entry.ast, (n, ancestors) => {
+      if (n.type === 'Identifier' && n.name === 'selfCheck') selfCheckFiles.add(rel(f));
+      if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && n.callee.name === 'selfCheck') {
+        ancestors.forEach((a, i) => {
+          if (a.type === 'TryStatement' && ancestors[i + 1] === a.block && (!a.handler || !containsThrow(a.handler.body))) add('T-LINT-12', f, n.loc.start.line, 'selfCheck called inside a try block whose catch does not rethrow');
+        });
+      }
+    });
+  }
+  if (selfCheckFiles.size !== 1 || !selfCheckFiles.has('src/core/save.js')) add('T-LINT-12', join(root, 'src/core/save.js'), 0, `selfCheck must be defined and used only in src/core/save.js, found in: ${[...selfCheckFiles].join(', ') || 'nowhere'}`);
 
   const fontDir = join(root, 'public', 'fonts');
   const cssText = all.filter((p) => extname(p) === '.css' && rel(p).startsWith('styles/')).map(read).join('\n');
