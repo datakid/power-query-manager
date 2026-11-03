@@ -38,42 +38,80 @@ function saveBytes(bytes, name, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
+const STATUS_INTERVAL_MS = 500;
+
 class Status {
-  constructor(el) {
+  constructor(el, alertEl) {
     this.el = el;
+    this.alertEl = alertEl;
     this.state = { run: null, compare: null, culture: 'en-US', note: '', edits: 0, flags: [], counts: '' };
-    this.render();
+    this.sig = null;
+    this.lastAt = -Infinity;
+    this.timer = null;
+    this.zw = false;
+    this.flush();
   }
 
   set(partial) {
+    if (partial.note && partial.note === this.state.note) this.zw = !this.zw;
     Object.assign(this.state, partial);
-    this.render();
+    this.schedule();
   }
 
-  render() {
+  describe() {
     const st = this.state;
-    clear(this.el);
     const bits = [];
+    let alert = '';
     if (st.run) {
       if (st.run.cancelled) bits.push(S.cancelled);
       else if (st.run.fn) bits.push(S.functionStatus);
-      else if (st.run.error) bits.push(S.errorStatus(st.run.error));
+      else if (st.run.error) alert = S.errorStatus(st.run.error);
       else if (st.run.rows !== undefined) bits.push(S.runStatus(st.run.rows, st.run.secs));
       else bits.push(S.valueStatus(st.run.secs));
     }
-    this.el.append(h('span', null, [st.counts, ...bits].filter(Boolean).join(' · ') || ' '));
+    const items = [{ text: [st.counts, ...bits].filter(Boolean).join(' · ') || ' ' }];
     const c = st.compare;
     if (c) {
-      if (c.disabled) this.el.append(h('span', null, ' · ', c.disabled === 'time' ? S.compareTime : S.compareRandom));
-      else if (c.reason === 'columns') this.el.append(h('span', null, ' · ', S.compareColumns));
-      else if (c.matches) this.el.append(h('span', null, ' · ', h('span', { class: 'status-dot ok' }), S.matchesCache));
-      else this.el.append(h('span', null, ' · ', h('span', { class: 'status-dot diff' }), c.reason === 'rows' ? S.rowCountDiffers(c.got, c.expected) : S.cellsDiffer(c.count)));
+      if (c.disabled) items.push({ text: ` · ${c.disabled === 'time' ? S.compareTime : S.compareRandom}` });
+      else if (c.reason === 'columns') items.push({ text: ` · ${S.compareColumns}` });
+      else if (c.matches) items.push({ text: ` · ${S.matchesCache}`, dot: 'ok' });
+      else items.push({ text: ` · ${c.reason === 'rows' ? S.rowCountDiffers(c.got, c.expected) : S.cellsDiffer(c.count)}`, dot: 'diff' });
     }
-    if (st.flags && st.flags.includes('non-deterministic')) this.el.append(h('span', null, ' · ', S.nonDeterministic));
-    if (st.note) this.el.append(h('span', null, ' · ', st.note));
-    this.el.append(h('span', { class: 'spacer' }));
-    if (st.edits) this.el.append(h('span', null, S.itemsEdited(st.edits)));
-    if (st.culture && st.culture !== 'en-US') this.el.append(h('span', null, ` · ${st.culture}`));
+    if (st.flags && st.flags.includes('non-deterministic')) items.push({ text: ` · ${S.nonDeterministic}` });
+    if (st.note) items.push({ text: ` · ${st.note}${this.zw ? '\u200b' : ''}` });
+    items.push({ spacer: true });
+    if (st.edits) items.push({ text: S.itemsEdited(st.edits) });
+    if (st.culture && st.culture !== 'en-US') items.push({ text: ` · ${st.culture}` });
+    return { items, alert };
+  }
+
+  schedule() {
+    const { items, alert } = this.describe();
+    if (alert !== this.alertEl.textContent) this.alertEl.textContent = alert;
+    if (JSON.stringify(items) === this.sig) return;
+    const wait = STATUS_INTERVAL_MS - (performance.now() - this.lastAt);
+    if (wait <= 0) this.flush();
+    else if (!this.timer) {
+      this.timer = setTimeout(() => {
+        this.timer = null;
+        this.flush();
+      }, wait);
+    }
+  }
+
+  flush() {
+    const { items, alert } = this.describe();
+    if (alert !== this.alertEl.textContent) this.alertEl.textContent = alert;
+    const sig = JSON.stringify(items);
+    if (sig === this.sig) return;
+    this.sig = sig;
+    this.lastAt = performance.now();
+    clear(this.el);
+    for (const it of items) {
+      if (it.spacer) this.el.append(h('span', { class: 'spacer' }));
+      else if (it.dot) this.el.append(h('span', null, ' · ', h('span', { class: `status-dot ${it.dot}` }), it.text.replace(/^ · /, '')));
+      else this.el.append(h('span', null, it.text));
+    }
   }
 }
 
@@ -103,9 +141,11 @@ export class App {
     this.mainEl = h('main', { class: 'content' });
     this.mainEl.style.minHeight = '0';
     this.mainEl.style.display = 'grid';
-    this.statusEl = h('div', { class: 'statusbar', role: 'status', 'aria-live': 'polite' });
-    this.status = new Status(this.statusEl);
-    this.root.append(this.input, this.topbar, this.mainEl, this.statusEl);
+    this.statusEl = h('div', { class: 'status-main', id: 'status', role: 'status', 'aria-live': 'polite' });
+    this.alertEl = h('div', { class: 'status-alert', id: 'alert', role: 'alert' });
+    this.barEl = h('div', { class: 'statusbar' }, this.statusEl, this.alertEl);
+    this.status = new Status(this.statusEl, this.alertEl);
+    this.root.append(this.input, this.topbar, this.mainEl, this.barEl);
     this.root.classList.add('app');
     this.showEmpty();
   }

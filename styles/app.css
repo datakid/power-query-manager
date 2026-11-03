@@ -421,6 +421,23 @@ textarea {
   white-space: nowrap;
 }
 
+.status-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: var(--s-1);
+}
+
+.status-alert {
+  color: var(--clay-ink);
+  white-space: nowrap;
+}
+
+.status-alert:empty {
+  display: none;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;

@@ -1,5 +1,5 @@
 {
-  "version": "b2d4915cae8a9ec4",
+  "version": "c27c0e8a8941d6d0",
   "files": [
     "./",
     "index.html",
@@ -35,6 +35,7 @@
     "src/core/export/files.js",
     "src/core/export/json.js",
     "src/core/export/xlsx.js",
+    "src/core/filename.js",
     "src/core/inflate.js",
     "src/core/limits.js",
     "src/core/m/convert.js",
