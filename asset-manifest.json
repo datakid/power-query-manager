@@ -1,5 +1,5 @@
 {
-  "version": "c27c0e8a8941d6d0",
+  "version": "a40766c4368e2553",
   "files": [
     "./",
     "index.html",
@@ -84,6 +84,7 @@
     "src/ui/dialogs.js",
     "src/ui/dom.js",
     "src/ui/editor.js",
+    "src/ui/formats.js",
     "src/ui/grid.js",
     "src/ui/highlight.js",
     "src/ui/strings.js",

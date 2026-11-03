@@ -5,9 +5,8 @@ import { Grid } from '../ui/grid.js';
 import { popover, bindingDialog } from '../ui/dialogs.js';
 import { parseExpressionText, MParseError } from '../core/m/parser.js';
 import { readTable } from '../core/cells.js';
+import { formatsFor } from '../ui/formats.js';
 import { Runner } from './runner.js';
-
-const plural = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
 function loadLabel(load) {
   if (load.kind === 'table') return `${S.loadedToTable} · ${load.sheet}!${load.ref}${load.alsoModel ? ` · ${S.loadedToModel}` : ''}`;
@@ -513,7 +512,7 @@ export class Workspace {
     }
     if (res.status === 'stopped') {
       const key = res.code;
-      const text = key === 'm.timeout' ? fmt(errorMessage(key), { s: this.settings.timeoutS }) : key === 'm.rows' ? fmt(errorMessage(key), { n: ((res.detail && res.detail.rows) || this.settings.rowCap).toLocaleString('en-US') }) : errorMessage(key);
+      const text = key === 'm.timeout' ? fmt(errorMessage(key), { s: this.settings.timeoutS }) : key === 'm.rows' ? fmt(errorMessage(key), { n: formatsFor(this.settings.culture).integer.format((res.detail && res.detail.rows) || this.settings.rowCap) }) : errorMessage(key);
       this.setMessage(text, 'warn');
       this.status.set({ run: { error: key }, compare: null });
       return;
@@ -550,6 +549,11 @@ export class Workspace {
     const line = before.split('\n').length;
     const col = at - before.lastIndexOf('\n');
     this.editor.setError({ message, line, col, start: at, end: at + name.length });
+  }
+
+  applyCulture() {
+    this.grid.setCulture(this.settings.culture);
+    this.grid.rerender();
   }
 
   showTable(t, remote) {
@@ -639,4 +643,4 @@ export class Workspace {
   }
 }
 
-export { svgImg, plural };
+export { svgImg };

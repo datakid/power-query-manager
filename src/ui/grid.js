@@ -1,5 +1,6 @@
 import { h, clear, placeBelow, onOutside } from './dom.js';
 import { S } from './strings.js';
+import { formatsFor } from './formats.js';
 
 const ROW_H = 28;
 const HEAD_H = 44;
@@ -86,8 +87,8 @@ export class Grid {
     this.active = null;
     this.drag = false;
     this.loader = null;
-    this.numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 15, useGrouping: false });
-    this.integerFormat = new Intl.NumberFormat('en-US');
+    this.numberFormat = formatsFor('en-US').number;
+    this.integerFormat = formatsFor('en-US').integer;
     this.head = h('div', { class: 'grid-head', role: 'row' });
     this.body = h('div', { class: 'grid-body', role: 'rowgroup' });
     this.sizer = h('div', { class: 'grid-sizer' }, this.head, this.body);
@@ -103,13 +104,14 @@ export class Grid {
   }
 
   setCulture(name) {
-    try {
-      this.numberFormat = new Intl.NumberFormat(name, { maximumFractionDigits: 15, useGrouping: false });
-      this.integerFormat = new Intl.NumberFormat(name);
-    } catch {
-      this.numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 15, useGrouping: false });
-      this.integerFormat = new Intl.NumberFormat('en-US');
-    }
+    const f = formatsFor(name);
+    this.numberFormat = f.number;
+    this.integerFormat = f.integer;
+  }
+
+  rerender() {
+    if (!this.columns.length) return;
+    this.repaintAll();
   }
 
   setData({ columns, rowCount, rows = null, loader = null, diffs = null }) {

@@ -1,5 +1,6 @@
 import { h, clear } from '../ui/dom.js';
 import { S, errorMessage, fmt } from '../ui/strings.js';
+import { formatsFor } from '../ui/formats.js';
 import { settingsDialog, shortcutsDialog, detailsDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
@@ -61,13 +62,14 @@ class Status {
 
   describe() {
     const st = this.state;
+    const f = formatsFor(st.culture);
     const bits = [];
     let alert = st.alertText || '';
     if (st.run) {
       if (st.run.cancelled) bits.push(S.cancelled);
       else if (st.run.fn) bits.push(S.functionStatus);
       else if (st.run.error) alert = alert || S.errorStatus(st.run.error);
-      else if (st.run.rows !== undefined) bits.push(S.runStatus(st.run.rows, st.run.secs));
+      else if (st.run.rows !== undefined) bits.push(S.runStatus(st.run.rows, st.run.secs, f.integer.format(st.run.rows)));
       else bits.push(S.valueStatus(st.run.secs));
     }
     const items = [{ text: [st.counts, ...bits].filter(Boolean).join(' · ') || ' ' }];
@@ -76,7 +78,7 @@ class Status {
       if (c.disabled) items.push({ text: ` · ${c.disabled === 'time' ? S.compareTime : S.compareRandom}` });
       else if (c.reason === 'columns') items.push({ text: ` · ${S.compareColumns}` });
       else if (c.matches) items.push({ text: ` · ${S.matchesCache}`, dot: 'ok' });
-      else items.push({ text: ` · ${c.reason === 'rows' ? S.rowCountDiffers(c.got, c.expected) : S.cellsDiffer(c.count)}`, dot: 'diff' });
+      else items.push({ text: ` · ${c.reason === 'rows' ? S.rowCountDiffers(f.integer.format(c.got), f.integer.format(c.expected)) : S.cellsDiffer(f.integer.format(c.count))}`, dot: 'diff' });
     }
     if (st.flags && st.flags.includes('non-deterministic')) items.push({ text: ` · ${S.nonDeterministic}` });
     if (st.note) items.push({ text: ` · ${st.note}${this.zw ? '\u200b' : ''}` });
@@ -310,7 +312,10 @@ export class App {
       Object.assign(this.settings, next);
       applyTheme(next.theme);
       this.status.set({ culture: next.culture });
-      if (this.ws) this.ws.settings = this.settings;
+      if (this.ws) {
+        this.ws.settings = this.settings;
+        this.ws.applyCulture();
+      }
     });
   }
 
