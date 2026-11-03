@@ -239,6 +239,27 @@ export function runAll() {
     }
   }
 
+  const directives = (policy) => policy.split(';').map((d) => d.trim().replace(/\s+/g, ' ')).filter(Boolean).sort();
+  const cspSources = {
+    'index.html': /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(read(join(root, 'index.html'))),
+    '_headers': /Content-Security-Policy:\s*(.+)/.exec(read(join(root, '_headers'))),
+    'vercel.json': /"key": "Content-Security-Policy", "value": "([^"]+)"/.exec(read(join(root, 'vercel.json'))),
+    'tests/e2e/server.js': /'Content-Security-Policy': "([^"]+)"/.exec(read(join(root, 'tests', 'e2e', 'server.js')))
+  };
+  const policies = {};
+  for (const [name, m] of Object.entries(cspSources)) {
+    if (!m) add('T-LINT-14', join(root, name), 0, 'Content-Security-Policy not found');
+    else policies[name] = directives(m[1]);
+  }
+  const isAncestors = (d) => d.startsWith('frame-ancestors');
+  if (policies['index.html'] && policies['index.html'].some(isAncestors)) add('T-LINT-14', join(root, 'index.html'), 0, 'frame-ancestors is ignored in a meta policy and logs a console error');
+  const reference = policies['_headers'];
+  for (const [name, list] of Object.entries(policies)) {
+    if (!reference) break;
+    const expected = name === 'index.html' ? reference.filter((d) => !isAncestors(d)) : reference;
+    if (JSON.stringify(list) !== JSON.stringify(expected)) add('T-LINT-14', join(root, name), 0, `policy differs from _headers: ${list.filter((d) => !expected.includes(d)).join(' | ')} / missing ${expected.filter((d) => !list.includes(d)).join(' | ')}`);
+  }
+
   const fontDir = join(root, 'public', 'fonts');
   const cssText = all.filter((p) => extname(p) === '.css' && rel(p).startsWith('styles/')).map(read).join('\n');
   for (const name of readdirSync(fontDir)) {
