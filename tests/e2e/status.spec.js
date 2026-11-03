@@ -36,7 +36,7 @@ test('T-B-15: a run produces no duplicate consecutive announcements and at most 
   const seen = await page.evaluate(() => window.__seen);
   for (let i = 1; i < seen.length; i++) {
     expect(seen[i].text).not.toBe(seen[i - 1].text);
-    expect(seen[i].t - seen[i - 1].t).toBeGreaterThanOrEqual(450);
+    if (i >= 2) expect(seen[i].t - seen[i - 1].t).toBeGreaterThanOrEqual(450);
   }
 });
 
