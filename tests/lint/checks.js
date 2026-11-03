@@ -57,6 +57,26 @@ function containsThrow(node) {
   return found;
 }
 
+function cssBlock(text, marker) {
+  const at = text.indexOf(marker);
+  if (at < 0) return '';
+  const open = text.indexOf('{', at);
+  let depth = 0;
+  for (let k = open; k < text.length; k++) {
+    if (text[k] === '{') depth++;
+    if (text[k] === '}') {
+      depth--;
+      if (depth === 0) return text.slice(open + 1, k);
+    }
+  }
+  return '';
+}
+
+const cssToken = (block, name) => {
+  const m = new RegExp(`${name}:\\s*(#[0-9A-Fa-f]{3,8})\\s*;`).exec(block);
+  return m ? m[1].toUpperCase() : null;
+};
+
 export function runAll() {
   const findings = [];
   const add = (rule, file, line, msg) => findings.push({ rule, file: rel(file), line, msg });
@@ -198,6 +218,26 @@ export function runAll() {
     });
   }
   if (selfCheckFiles.size !== 1 || !selfCheckFiles.has('src/core/save.js')) add('T-LINT-12', join(root, 'src/core/save.js'), 0, `selfCheck must be defined and used only in src/core/save.js, found in: ${[...selfCheckFiles].join(', ') || 'nowhere'}`);
+
+  const tokensCss = read(join(root, 'styles', 'tokens.css'));
+  const appCss = read(join(root, 'styles', 'app.css'));
+  const bodyRule = /(?:^|\n)body\s*\{[^}]*?background:\s*var\((--[a-z0-9-]+)\)/.exec(appCss);
+  const groundToken = bodyRule ? bodyRule[1] : null;
+  if (!groundToken) add('T-LINT-13', join(root, 'styles', 'app.css'), 0, 'body background does not use a token');
+  else {
+    const ground = { light: cssToken(cssBlock(tokensCss, ':root {'), groundToken), dark: cssToken(cssBlock(tokensCss, ':root[data-theme="dark"]'), groundToken) };
+    if (!ground.light || !ground.dark) add('T-LINT-13', join(root, 'styles', 'tokens.css'), 0, `${groundToken} missing a light or dark value`);
+    const html = read(join(root, 'index.html'));
+    for (const scheme of ['light', 'dark']) {
+      const m = new RegExp(`<meta name="theme-color" content="(#[0-9A-Fa-f]{6})" media="\\(prefers-color-scheme: ${scheme}\\)">`).exec(html);
+      if (!m) add('T-LINT-13', join(root, 'index.html'), 0, `no ${scheme} theme-color meta`);
+      else if (m[1].toUpperCase() !== ground[scheme]) add('T-LINT-13', join(root, 'index.html'), 0, `${scheme} theme-color ${m[1]} is not ${groundToken} ${ground[scheme]}`);
+    }
+    const manifest = JSON.parse(read(join(root, 'manifest.webmanifest')));
+    for (const key of ['theme_color', 'background_color']) {
+      if (String(manifest[key]).toUpperCase() !== ground.light) add('T-LINT-13', join(root, 'manifest.webmanifest'), 0, `${key} ${manifest[key]} is not ${groundToken} ${ground.light}`);
+    }
+  }
 
   const fontDir = join(root, 'public', 'fonts');
   const cssText = all.filter((p) => extname(p) === '.css' && rel(p).startsWith('styles/')).map(read).join('\n');
