@@ -118,3 +118,18 @@ test('offline: after the first load the app starts without a network', async ({ 
   expect(fontsOk).toBe(true);
   await context.setOffline(false);
 });
+
+test('T-B-23: offline reload with a query string and with index.html still renders', async ({ page, context }) => {
+  await openApp(page);
+  await page.evaluate(async () => (await navigator.serviceWorker.ready).active.state);
+  await page.waitForFunction(async () => (await caches.keys()).length > 0);
+  await page.reload();
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await context.setOffline(true);
+  for (const suffix of ['?x=1', 'index.html', 'index.html?utm=a#frag']) {
+    const target = new URL(suffix, page.url()).href;
+    await page.goto(target);
+    await page.waitForSelector('.dropzone');
+  }
+  await context.setOffline(false);
+});
