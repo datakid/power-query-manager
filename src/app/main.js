@@ -39,12 +39,13 @@ function saveBytes(bytes, name, mime) {
 }
 
 const STATUS_INTERVAL_MS = 500;
+const OPENABLE_NAME = /\.(xlsx|xlsm|xltx|xltm|xls|xlsb|ods)$/i;
 
 class Status {
   constructor(el, alertEl) {
     this.el = el;
     this.alertEl = alertEl;
-    this.state = { run: null, compare: null, culture: 'en-US', note: '', edits: 0, flags: [], counts: '' };
+    this.state = { run: null, compare: null, culture: 'en-US', note: '', edits: 0, flags: [], counts: '', alertText: '' };
     this.sig = null;
     this.lastAt = -Infinity;
     this.timer = null;
@@ -61,11 +62,11 @@ class Status {
   describe() {
     const st = this.state;
     const bits = [];
-    let alert = '';
+    let alert = st.alertText || '';
     if (st.run) {
       if (st.run.cancelled) bits.push(S.cancelled);
       else if (st.run.fn) bits.push(S.functionStatus);
-      else if (st.run.error) alert = S.errorStatus(st.run.error);
+      else if (st.run.error) alert = alert || S.errorStatus(st.run.error);
       else if (st.run.rows !== undefined) bits.push(S.runStatus(st.run.rows, st.run.secs));
       else bits.push(S.valueStatus(st.run.secs));
     }
@@ -166,17 +167,29 @@ export class App {
   }
 
   bindGlobal() {
-    const over = (on) => (ev) => {
-      ev.preventDefault();
+    this.dragDepth = 0;
+    const setOver = (on) => {
       if (this.zone) this.zone.classList.toggle('is-over', on);
     };
-    window.addEventListener('dragover', over(true));
-    window.addEventListener('dragleave', over(false));
+    window.addEventListener('dragenter', (ev) => {
+      ev.preventDefault();
+      this.dragDepth++;
+      setOver(true);
+    });
+    window.addEventListener('dragover', (ev) => {
+      ev.preventDefault();
+      if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
+      setOver(true);
+    });
+    window.addEventListener('dragleave', () => {
+      this.dragDepth = Math.max(0, this.dragDepth - 1);
+      if (this.dragDepth === 0) setOver(false);
+    });
     window.addEventListener('drop', (ev) => {
       ev.preventDefault();
-      if (this.zone) this.zone.classList.remove('is-over');
-      const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
-      if (f) this.openFile(f);
+      this.dragDepth = 0;
+      setOver(false);
+      this.handleDrop(ev.dataTransfer);
     });
     this.leaveGuard = (ev) => {
       ev.preventDefault();
@@ -184,6 +197,21 @@ export class App {
     };
     this.guarding = false;
     window.addEventListener('keydown', (ev) => this.onKey(ev));
+  }
+
+  refuse(text) {
+    if (this.ws) this.status.set({ alertText: text });
+    else this.showEmpty(text);
+  }
+
+  handleDrop(dt) {
+    if (!dt) return;
+    const files = [...(dt.files || [])];
+    const items = [...(dt.items || [])];
+    const folder = items.some((it) => it.kind === 'file' && typeof it.webkitGetAsEntry === 'function' && (it.webkitGetAsEntry() || {}).isDirectory);
+    if (folder) this.refuse(S.dropFolder);
+    else if (files.length > 1) this.refuse(S.dropOne);
+    else if (files.length === 1) this.openFile(files[0]);
   }
 
   syncLeaveGuard() {
@@ -224,9 +252,13 @@ export class App {
   }
 
   async openFile(file) {
+    if (!OPENABLE_NAME.test(file.name)) {
+      this.refuse(S.dropType);
+      return;
+    }
     if (this.session.editCount > 0 && !window.confirm(S.unsavedLeave)) return;
     const next = new Session();
-    this.status.set({ run: null, compare: null, note: '', edits: 0, counts: '' });
+    this.status.set({ run: null, compare: null, note: '', edits: 0, counts: '', alertText: '' });
     try {
       await next.open(file);
     } catch (e) {
