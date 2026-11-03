@@ -252,5 +252,12 @@
       "--flax",
       4.5
     ]
-  ]
+  ],
+  "exempt": {
+    "--line": "decorative hairline between grounds of the same family; no information depends on it",
+    "--lichen": "status dot fill only; the state is also written in the adjacent text",
+    "--clay": "status dot fill only; the state is also written in the adjacent text",
+    "--tide": "base hue; CSS uses only its -ink and -soft variants, which are paired",
+    "--scrim": "translucent overlay behind dialogs, not a text or boundary colour"
+  }
 }
