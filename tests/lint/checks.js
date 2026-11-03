@@ -246,6 +246,28 @@ export function runAll() {
     if (!new RegExp(`src:[^;]*url\\(["']?[^)]*fonts/${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\)`).test(cssText)) add('T-LINT-11', join(fontDir, name), 0, 'font file not referenced by an @font-face');
   }
 
+  const letterOrDigit = /[\p{L}\p{N}]/u;
+  const stringLeaves = (node) => {
+    if (!node) return [];
+    if (node.type === 'Literal' && typeof node.value === 'string') return [node];
+    if (node.type === 'ConditionalExpression') return [...stringLeaves(node.consequent), ...stringLeaves(node.alternate)];
+    return [];
+  };
+  for (const f of uiFiles) {
+    const entry = parsed.get(f);
+    if (!entry) continue;
+    visitWithAncestors(entry.ast, (n, ancestors) => {
+      if (n.type === 'Property' && !n.computed && n.key && (n.key.name === 'text' || n.key.value === 'text')) {
+        for (const leaf of stringLeaves(n.value)) if (letterOrDigit.test(leaf.value)) add('T-LINT-9', f, leaf.loc.start.line, `text "${leaf.value}"`);
+      }
+      if (n.type === 'ReturnStatement') {
+        const fn = [...ancestors].reverse().find((a) => a.type === 'FunctionDeclaration' || a.type === 'FunctionExpression' || a.type === 'ArrowFunctionExpression');
+        const name = fn && fn.type === 'FunctionDeclaration' && fn.id ? fn.id.name : '';
+        if (/(Label|Text|Display)$/.test(name)) for (const leaf of stringLeaves(n.argument)) if (letterOrDigit.test(leaf.value)) add('T-LINT-9', f, leaf.loc.start.line, `${name} returns "${leaf.value}"`);
+      }
+    });
+  }
+
   const queryParamUses = [];
   for (const f of srcJs) {
     if (/location\.search|URLSearchParams/.test(read(f))) queryParamUses.push(rel(f));

@@ -11,18 +11,18 @@ const SORT_LIMIT = 200000;
 
 export function typeLabel(col) {
   const t = String(col.type || 'any').replace(/^nullable /, '');
-  if (col.facet && ['int64', 'int32', 'int16', 'int8', 'byte'].includes(col.facet)) return '123';
-  if (t === 'text') return 'abc';
-  if (t === 'number') return '1.2';
-  if (t === 'logical') return 'true/false';
+  if (col.facet && ['int64', 'int32', 'int16', 'int8', 'byte'].includes(col.facet)) return S.typeInteger;
+  if (t === 'text') return S.typeText;
+  if (t === 'number') return S.typeNumber;
+  if (t === 'logical') return S.typeLogical;
   return t;
 }
 
 export function cellDisplay(v, numberFormat) {
   if (v === null || v === undefined) return { text: S.nullText, cls: 'null' };
-  if (typeof v === 'string') return { text: v.replace(/\r?\n|\r/g, ' ↵ '), cls: '', raw: v };
+  if (typeof v === 'string') return { text: v.replace(/\r?\n|\r/g, S.newlineGlyph), cls: '', raw: v };
   if (typeof v === 'number') return { text: numberFormat.format(v), cls: 'num', raw: String(v) };
-  if (typeof v === 'boolean') return { text: v ? 'true' : 'false', cls: '' };
+  if (typeof v === 'boolean') return { text: v ? S.booleanTrue : S.booleanFalse, cls: '' };
   switch (v.k) {
     case 'number':
       return { text: v.special, cls: 'num' };
