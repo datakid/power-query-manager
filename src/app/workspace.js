@@ -391,6 +391,15 @@ export class Workspace {
     }
   }
 
+  setRunning(on) {
+    const active = document.activeElement;
+    this.progress.hidden = !on;
+    this.runBtn.hidden = on;
+    this.cancelBtn.hidden = !on;
+    if (on && active === this.runBtn) this.cancelBtn.focus();
+    else if (!on && active === this.cancelBtn) this.runBtn.focus();
+  }
+
   async run(step) {
     const item = this.item;
     if (!item || item.type !== 'query' || this.runner.running) return;
@@ -407,9 +416,7 @@ export class Workspace {
       }
       throw e;
     }
-    this.progress.hidden = false;
-    this.runBtn.hidden = true;
-    this.cancelBtn.hidden = false;
+    this.setRunning(true);
     const q = s.query(item.name);
     let compareTo = null;
     if (!step && q.load.kind === 'table') {
@@ -436,9 +443,7 @@ export class Workspace {
       localOffsetMin: -new Date().getTimezoneOffset()
     }, { onNeedBinding: (kind, key) => this.askBinding(kind, key) });
     if (token !== this.runToken) return;
-    this.progress.hidden = true;
-    this.runBtn.hidden = false;
-    this.cancelBtn.hidden = true;
+    this.setRunning(false);
     this.renderResult(res, !!step);
   }
 
@@ -468,9 +473,7 @@ export class Workspace {
     if (this.runner.running) {
       this.runToken++;
       this.runner.cancel();
-      this.progress.hidden = true;
-      this.runBtn.hidden = false;
-      this.cancelBtn.hidden = true;
+      this.setRunning(false);
       this.setMessage(S.cancelled, '');
       this.status.set({ run: { cancelled: true }, compare: null });
       return true;

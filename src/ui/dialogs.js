@@ -30,8 +30,13 @@ function closeLayer(layer, anchor, afterPointer) {
 const isTop = (layer) => layers[layers.length - 1] === layer;
 
 export function openDialog(dialog) {
+  const opener = document.activeElement;
   document.body.append(dialog);
-  dialog.addEventListener('close', () => dialog.remove());
+  dialog.addEventListener('close', () => {
+    dialog.remove();
+    const now = document.activeElement;
+    if (opener && opener.isConnected && opener !== document.body && (!now || now === document.body)) opener.focus();
+  });
   dialog.showModal();
   return dialog;
 }
