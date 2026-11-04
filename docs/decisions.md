@@ -61,3 +61,25 @@ Print preview and page-break emulation (M5, marked optional in the spec) are not
 ## 15. What counts as a change
 
 Query text is compared after trimming both ends through `normalizeQueryText` in `src/core/pq/section.js`; the session and the writer share that one function. VBA module text is compared exactly, without trimming, because leading whitespace and trailing blank lines are significant in a module.
+
+## 16. Identity
+
+The name stays quoin. The mark is a square ring with a solid sodium block replacing the bottom-right corner (`public/mark.svg`, `public/mark-dark.svg`, `public/favicon.svg`, `public/icon-maskable.svg`). The app embeds the mark with `<img>`, which cannot inherit `currentColor`, so there are two files with the ring in ink and in bone, and `src/ui/mark.js` swaps the `src` when the theme (explicit choice or system scheme) changes. `favicon.svg` is the only file with a `<style>` element: an SVG used as a favicon is a separate document, so the page policy does not apply to it, and the block inside follows the operating system colour scheme.
+
+## 17. Palette and tokens
+
+`styles/tokens.css` holds the ground, sodium, cobalt, minium and patina sets from `docs/next/02_IDENTITY.md`. Differences from that document, each forced by the contrast test or by the existing code:
+- `--tide` is gone; its two roles fold into `--cobalt-ink` and `--cobalt-soft`.
+- `--marker` is new: the selected-row bar. Sodium on the light grounds is about 1.5:1, so light uses the dark gold of `--sodium-ink` and dark uses sodium.
+- `--readout-alert` is new: error text on the inverted status strip, which is dark in both themes, so `--minium-ink` cannot be used there.
+- Dark `--line-strong` is `#5B6760` instead of `#4A544E` to reach 3:1 on both dark grounds.
+- Radii are rounder than the document (8, 12, 16 and 22 px) and a pill radius is added; `--font-code` keeps Commit Mono; type tokens keep their existing split of size and line height.
+- The sodium fill of the primary button is not paired for boundary contrast: the label is paired at well above 4.5:1 and the button is identified by its text.
+
+## 18. Layout below 1024 px
+
+The rail becomes a sheet opened from an Items button in the item header; selecting an item closes it. Below 700 px the wordmark and file size are hidden; below 640 px the Code and Result switch is shown and the Run bar stays visible in both panes. The grid rows of the main column are assigned explicitly so that a visible information strip cannot push the editor into the wrong row.
+
+## 19. Visual baselines
+
+`tests/__visual__` holds 36 baselines (nine states, two sizes, two themes) from Chromium on Linux with reduced motion and the status strip masked where it shows a duration. They are not platform-suffixed, so a different operating system will show small font-rendering differences; regenerate them with `npx playwright test tests/e2e/visual.spec.js --update-snapshots` after checking the screenshots by eye.

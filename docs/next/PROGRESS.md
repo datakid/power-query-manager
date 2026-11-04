@@ -76,3 +76,32 @@
 ### Observations for Phase 2
 - At 390 px wide the top bar overflows (Download is clipped), the Code/Result switch is oversized and the Run bar is out of reach. I-3, I-4 and I-9 must fix this.
 - Typing in a 2,000-line module costs about 230 ms per edit in `afterEdit`. Not in scope; noted for `docs/observations.md`.
+
+## Phase 2 — Visual identity
+
+### Done
+- I-1 tokens, I-2 migration (old names mapped as in 02, `--tide` folded into cobalt), `tests/a11y/pairs.json` rewritten with an `exempt` map; contrast test green for both themes.
+- I-3 top bar (mark, wordmark, file name truncating before its extension, size, Export, Settings, Download), I-4 rail with sticky headers, rounded rows, selected row with a `--marker` bar (the old selector never matched because `aria-selected` is on the `li`; fixed), visible `edited` label next to the dot, and a sheet below 1024 px.
+- I-5 buttons (Run is the sodium button; Download is secondary), I-6 inverted status strip with a verdict chip, I-7 editor tokens (`--syn-*`, error line bar), I-8 grid (error cells on `--minium-soft`, row hover), I-9 dialogs and menus on `--raised`, bottom sheet below 640 px, I-10 empty state, I-11 motion (also forced off under reduced motion), I-12 forced colours.
+- I-13 mark and favicon replaced, I-14 icon script rewritten (also closes B-22: any and maskable icons at 192 and 512, opaque apple icon, T-B-22), I-15 wordmark in CSS.
+- I-16 36 baselines, T-I-03, T-I-05, T-I-06, T-I-07 (`tests/unit/icons.test.js`).
+- Screenshots of every baseline were looked at: desktop and 390 px, light and dark.
+
+### Changed expectations
+- `downloadButton` in `tests/e2e/helpers.js` (and two direct uses) now targets `.topbar button[aria-haspopup="dialog"]` instead of `.topbar .btn-primary`, because Run is now the single sodium button.
+- T-E2E-17 (mobile) opens the Items sheet before tapping a query, because the rail is a sheet at 390 px.
+
+### Not reproduced
+- None.
+
+### Blocked
+- State 10 of I-16 (print preview) and its 4 baselines wait for Phase 4.
+
+### Deviations
+- I-1 values changed where the contrast test required it (see decision 17). I-4 marker colour, I-6 `--readout-alert`.
+- I-3: Print is not in the top bar yet (Phase 4). I-7: no current-line highlight (it would need editor code, not styling). I-8: the index column is not sticky; rows are absolutely positioned and the sticky behaviour would need a rewrite of the grid layout. Neither is in the acceptance list.
+- Radii are rounder than the document, at the owner's request for a rounded, calm look.
+- The mark swaps `src` through JS rather than using `currentColor`, because the existing e2e assertion requires an `<img class="mark">`.
+
+### Manual checks still to do
+- The favicon in a real browser tab at 16 px in both OS schemes. It was checked as an `<img>` at 16, 24 and 32 px and reads clearly; a tab is not available here.
