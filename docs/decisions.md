@@ -83,3 +83,7 @@ The rail becomes a sheet opened from an Items button in the item header; selecti
 ## 19. Visual baselines
 
 `tests/__visual__` holds 36 baselines (nine states, two sizes, two themes) from Chromium on Linux with reduced motion and the status strip masked where it shows a duration. They are not platform-suffixed, so a different operating system will show small font-rendering differences; regenerate them with `npx playwright test tests/e2e/visual.spec.js --update-snapshots` after checking the screenshots by eye.
+
+## 20. One line differ
+
+`src/core/diff.js` holds the longest-common-subsequence matcher that `module-source.js` already used to place hidden `Attribute` lines, now shared with the Changes view and the printed diff. Above four million line pairs the middle of the text is not matched and shows as removed and added; the shared prefix and suffix are always matched.
