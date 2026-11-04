@@ -21,9 +21,16 @@ export class Workspace {
     this.status = status;
     this.runner = new Runner();
     this.item = null;
-    this.rail = h('nav', { class: 'rail', 'aria-label': S.queries });
+    this.rail = h('nav', { class: 'rail', id: 'rail', 'aria-label': S.itemsAria });
+    this.railOpen = false;
     this.main = h('section', { class: 'main', 'data-pane': 'code' });
-    this.root = h('div', { class: 'workspace' }, this.rail, this.main);
+    this.root = h('div', { class: 'workspace', 'data-rail': 'closed' }, this.rail, this.main);
+    this.rail.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && this.railOpen) {
+        ev.stopPropagation();
+        this.setRailOpen(false, true);
+      }
+    });
     host.append(this.root);
     this.buildMain();
     this.drillStack = [];
@@ -72,12 +79,13 @@ export class Workspace {
     this.title = h('h2', { class: 'item-title' });
     this.meta = h('span', { class: 'item-meta' });
     this.revertBtn = h('button', { class: 'btn btn-quiet', type: 'button', hidden: true, onclick: () => this.revert() }, S.revert);
-    this.head = h('div', { class: 'item-head' }, h('div', null, this.title), h('div', { class: 'item-actions' }, this.meta, this.revertBtn));
+    this.railToggle = h('button', { class: 'btn btn-quiet rail-toggle', type: 'button', 'aria-controls': 'rail', 'aria-expanded': false, onclick: () => this.setRailOpen(!this.railOpen, false) }, S.items);
+    this.head = h('div', { class: 'item-head' }, h('div', { class: 'item-title-row' }, this.railToggle, this.title), h('div', { class: 'item-actions' }, this.meta, this.revertBtn));
     this.info = h('div', { class: 'info-strip', hidden: true });
     this.editorHost = h('div', { class: 'editor-host' });
     this.editorHost.style.display = 'contents';
     this.editor = new Editor(this.editorHost, { language: 'm', label: S.editorAria, onChange: (t) => this.onEditorChange(t) });
-    this.runBtn = h('button', { class: 'btn', type: 'button', onclick: () => this.run() }, S.run, h('span', { class: 'item-meta' }, '⌘↵'));
+    this.runBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => this.run() }, S.run, h('span', { class: 'item-meta' }, '⌘↵'));
     this.cancelBtn = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => this.cancel() }, S.cancel);
     this.steps = h('div', { class: 'steps', role: 'group', 'aria-label': S.stepsLabel });
     this.diffBox = h('input', { type: 'checkbox', id: 'diff-box' });
@@ -103,6 +111,18 @@ export class Workspace {
     this.grid.el.hidden = true;
     this.messageEl = null;
     this.splitterSetup();
+  }
+
+  setRailOpen(open, returnFocus) {
+    this.railOpen = open;
+    this.root.dataset.rail = open ? 'open' : 'closed';
+    this.railToggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const stop = this.rail.querySelector('[role="treeitem"][tabindex="0"]');
+      if (stop) stop.focus();
+    } else if (returnFocus || this.rail.contains(document.activeElement)) {
+      this.railToggle.focus();
+    }
   }
 
   setPane(p) {
@@ -162,7 +182,7 @@ export class Workspace {
           isFn ? h('span', { class: 'badge-fn', 'aria-hidden': 'true' }, S.functionBadge) : null,
           isFn ? h('span', { class: 'sr-only' }, S.asFunction) : null,
           edited ? h('span', { class: 'dot-edited', 'aria-hidden': 'true' }) : null,
-          edited ? h('span', { class: 'sr-only sr-edited' }, S.asEdited) : null));
+          edited ? h('span', { class: 'tree-edited' }, S.editedMark) : null));
       li.addEventListener('click', () => this.select(item));
       li.addEventListener('keydown', (ev) => this.railKey(ev, li));
       if (extra) extra(li);
@@ -224,10 +244,10 @@ export class Workspace {
     if (!li) return;
     const edited = this.session.isEdited(item);
     const dot = li.querySelector('.dot-edited');
-    if (edited && !dot) li.append(h('span', { class: 'dot-edited', 'aria-hidden': 'true' }), h('span', { class: 'sr-only sr-edited' }, S.asEdited));
+    if (edited && !dot) li.append(h('span', { class: 'dot-edited', 'aria-hidden': 'true' }), h('span', { class: 'tree-edited' }, S.editedMark));
     else if (!edited && dot) {
       dot.remove();
-      const label = li.querySelector('.sr-edited');
+      const label = li.querySelector('.tree-edited');
       if (label) label.remove();
     }
   }
@@ -302,6 +322,7 @@ export class Workspace {
     this.item = item;
     this.drillStack = [];
     this.syncRailSelection();
+    if (this.railOpen) this.setRailOpen(false, false);
     const s = this.session;
     const isQuery = item.type === 'query';
     this.main.classList.toggle('is-vba', !isQuery);

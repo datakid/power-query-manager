@@ -265,6 +265,7 @@ test('T-E2E-17: the mobile layout offers a code and result switch and still down
   const page = await ctx.newPage();
   await openApp(page);
   await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await page.getByRole('button', { name: 'Items' }).tap();
   await item(page, 'RawInput').tap();
   await expect(page.locator('.segmented')).toBeVisible();
   await page.getByRole('button', { name: 'Result', exact: true }).tap();

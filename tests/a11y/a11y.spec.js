@@ -34,7 +34,7 @@ for (const theme of ['light', 'dark']) {
     await audit(page, `${theme} export menu`);
     await page.keyboard.press('Escape');
     await editor(page).fill(`${await editor(page).inputValue()}\n' x`);
-    await page.locator('.topbar .btn-primary').click();
+    await page.locator('.topbar button[aria-haspopup="dialog"]').click();
     await audit(page, `${theme} download`);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Shift+?');

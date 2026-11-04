@@ -1,6 +1,7 @@
 import { h, clear } from '../ui/dom.js';
 import { S, errorMessage, fmt } from '../ui/strings.js';
 import { formatsFor } from '../ui/formats.js';
+import { markImg, syncMarks, watchMarks } from '../ui/mark.js';
 import { settingsDialog, shortcutsDialog, detailsDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
@@ -21,6 +22,7 @@ function loadTheme() {
 function applyTheme(t) {
   if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
   else document.documentElement.removeAttribute('data-theme');
+  syncMarks();
   try {
     if (t === 'system') window.localStorage.removeItem('quoin.theme');
     else window.localStorage.setItem('quoin.theme', t);
@@ -112,7 +114,7 @@ class Status {
     clear(this.el);
     for (const it of items) {
       if (it.spacer) this.el.append(h('span', { class: 'spacer' }));
-      else if (it.dot) this.el.append(h('span', null, ' · ', h('span', { class: `status-dot ${it.dot}` }), it.text.replace(/^ · /, '')));
+      else if (it.dot) this.el.append(h('span', { class: `chip ${it.dot}` }, h('span', { class: `status-dot ${it.dot}` }), it.text.replace(/^ · /, '')));
       else this.el.append(h('span', null, it.text));
     }
   }
@@ -129,13 +131,16 @@ export class App {
   }
 
   build() {
-    this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() });
+    this.fileHead = h('span', { class: 'fn-head' });
+    this.fileTail = h('span', { class: 'fn-tail' });
+    this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() }, this.fileHead, this.fileTail);
+    this.fileMeta = h('span', { class: 'file-meta item-meta', hidden: true });
     this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
-    this.downloadBtn = h('button', { class: 'btn btn-primary', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, onclick: () => this.openDownload() }, S.download);
+    this.downloadBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, onclick: () => this.openDownload() }, S.download);
     this.topbar = h('header', { class: 'topbar' },
-      h('h1', { class: 'brand' }, h('img', { src: 'public/mark.svg', alt: '', width: '24', height: '24' }), S.appName),
-      this.fileBtn, h('span', { class: 'spacer' }), this.exportBtn, this.settingsBtn, this.downloadBtn);
+      h('h1', { class: 'brand' }, markImg('brand-mark', 28), h('span', { class: 'wordmark' }, S.appName)),
+      this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.exportBtn, this.settingsBtn, this.downloadBtn);
     this.input = h('input', { type: 'file', class: 'sr-only', accept: '.xlsx,.xlsm,.xltx,.xltm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', tabindex: '-1', 'aria-label': S.chooseFile });
     this.input.addEventListener('change', () => {
       if (this.input.files && this.input.files[0]) this.openFile(this.input.files[0]);
@@ -157,11 +162,12 @@ export class App {
     clear(this.mainEl);
     this.ws = null;
     this.fileBtn.hidden = true;
+    this.fileMeta.hidden = true;
     this.exportBtn.hidden = true;
     this.downloadBtn.hidden = true;
     this.zone = h('div', { class: 'dropzone' }, h('p', { class: 'item-meta' }, S.emptyPrompt), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => this.input.click() }, S.chooseFile));
     this.mainEl.append(h('div', { class: 'empty' }, h('div', { class: 'empty-inner' },
-      h('img', { class: 'mark', src: 'public/mark.svg', alt: '', width: '48', height: '48' }),
+      markImg('mark', 64),
       h('h2', null, S.tagline),
       message ? h('div', { class: 'message error', role: 'alert' }, message) : null,
       this.zone,
@@ -278,8 +284,13 @@ export class App {
       this.syncLeaveGuard();
     });
     this.syncLeaveGuard();
-    this.fileBtn.textContent = file.name;
+    const dot = file.name.lastIndexOf('.');
+    const split = dot > 0 ? dot : file.name.length;
+    this.fileHead.textContent = file.name.slice(0, split);
+    this.fileTail.textContent = file.name.slice(split);
     this.fileBtn.hidden = false;
+    this.fileMeta.textContent = S.fileMeta(file.size);
+    this.fileMeta.hidden = false;
     this.exportBtn.hidden = false;
     this.downloadBtn.hidden = false;
     this.status.set({ counts: S.fileCounts(next.queries.length, next.modules.length) });
@@ -424,6 +435,7 @@ export class App {
 
 export function boot() {
   applyTheme(loadTheme());
+  watchMarks();
   const root = document.getElementById('app');
   const app = new App(root);
   window.__quoin = app;

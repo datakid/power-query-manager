@@ -38,7 +38,7 @@ export const item = (page, name) => page.locator(`[role=treeitem][data-name="${n
 export const editor = (page) => page.locator('.editor-wrap textarea');
 export const runButton = (page) => page.getByRole('button', { name: /^Run/ });
 export const status = (page) => page.locator('.statusbar');
-export const downloadButton = (page) => page.locator('.topbar .btn-primary');
+export const downloadButton = (page) => page.locator('.topbar button[aria-haspopup="dialog"]');
 
 export async function runCurrent(page) {
   await runButton(page).click();

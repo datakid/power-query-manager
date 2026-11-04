@@ -1,5 +1,5 @@
 {
-  "version": "454eb4b4872a565d",
+  "version": "8c5837e6a379f097",
   "files": [
     "./",
     "index.html",
@@ -16,7 +16,10 @@
     "public/fonts/commit-mono-500.woff2",
     "public/icon-192.png",
     "public/icon-512.png",
+    "public/icon-maskable-192.png",
     "public/icon-maskable-512.png",
+    "public/icon-maskable.svg",
+    "public/mark-dark.svg",
     "public/mark.svg",
     "src/app/bootstrap.js",
     "src/app/main.js",
@@ -87,6 +90,7 @@
     "src/ui/formats.js",
     "src/ui/grid.js",
     "src/ui/highlight.js",
+    "src/ui/mark.js",
     "src/ui/strings.js",
     "src/workers/m-worker.js",
     "styles/app.css",
