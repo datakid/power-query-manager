@@ -70,8 +70,23 @@ export class Session {
     (item.type === 'query' ? this.queryEdits : this.moduleEdits).delete(item.name);
   }
 
+  changes() {
+    const queries = new Map();
+    for (const [name, current] of this.queryEdits) {
+      const q = this.query(name);
+      if (q) queries.set(name, { original: q.original, current: normalizeQueryText(current) });
+    }
+    const modules = new Map();
+    for (const [name, current] of this.moduleEdits) modules.set(name, { original: this.originalText({ type: 'module', name }), current });
+    return { queries, modules, count: queries.size + modules.size };
+  }
+
+  isDirty() {
+    return this.changes().count > 0;
+  }
+
   get editCount() {
-    return this.queryEdits.size + this.moduleEdits.size;
+    return this.changes().count;
   }
 
   queryEditable() {

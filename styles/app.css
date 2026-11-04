@@ -826,6 +826,7 @@ dialog h2 {
 
 @media (max-width: 699px) {
   .wordmark,
+  .dl-count,
   .file-meta {
     display: none;
   }

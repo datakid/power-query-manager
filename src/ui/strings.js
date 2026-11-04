@@ -13,6 +13,7 @@ export const S = {
   cancel: 'Cancel',
   revert: 'Revert',
   download: 'Download',
+  downloadCount: (n) => ` — ${n} ${n === 1 ? 'change' : 'changes'}`,
   downloadNone: 'No changes yet.',
   export: 'Export',
   settings: 'Settings',

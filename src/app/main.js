@@ -137,7 +137,8 @@ export class App {
     this.fileMeta = h('span', { class: 'file-meta item-meta', hidden: true });
     this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
-    this.downloadBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, onclick: () => this.openDownload() }, S.download);
+    this.downloadCount = h('span', { class: 'dl-count' });
+    this.downloadBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, 'aria-disabled': true, title: S.downloadNone, onclick: () => this.openDownload() }, S.download, this.downloadCount);
     this.topbar = h('header', { class: 'topbar' },
       h('h1', { class: 'brand' }, markImg('brand-mark', 28), h('span', { class: 'wordmark' }, S.appName)),
       this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.exportBtn, this.settingsBtn, this.downloadBtn);
@@ -222,6 +223,14 @@ export class App {
     else if (files.length === 1) this.openFile(files[0]);
   }
 
+  syncDownload() {
+    const n = this.session.editCount;
+    this.downloadBtn.setAttribute('aria-disabled', String(n === 0));
+    if (n === 0) this.downloadBtn.setAttribute('title', S.downloadNone);
+    else this.downloadBtn.removeAttribute('title');
+    this.downloadCount.textContent = n === 0 ? '' : S.downloadCount(n);
+  }
+
   syncLeaveGuard() {
     const dirty = this.session.editCount > 0;
     if (dirty === this.guarding) return;
@@ -280,9 +289,10 @@ export class App {
     this.ws = new Workspace(this.mainEl, this.session, this.settings, this.status);
     this.ws.onEdit(() => {
       this.status.set({ edits: this.session.editCount });
-      this.downloadBtn.disabled = false;
+      this.syncDownload();
       this.syncLeaveGuard();
     });
+    this.syncDownload();
     this.syncLeaveGuard();
     const dot = file.name.lastIndexOf('.');
     const split = dot > 0 ? dot : file.name.length;
@@ -332,6 +342,7 @@ export class App {
 
   openDownload() {
     const s = this.session;
+    if (s.editCount === 0) return;
     const qn = s.queryEdits.size;
     const mn = s.moduleEdits.size;
     const signed = !!(s.wb.vba && s.wb.vba.signed) && mn > 0;

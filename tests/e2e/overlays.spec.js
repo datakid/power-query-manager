@@ -54,6 +54,7 @@ test('T-B-13: Escape closes the download popover and returns focus to the Downlo
   await openApp(page);
   await loadFile(page, ext('pq_vba_complex.xlsm'));
   await item(page, 'FinalTable').click();
+  await editor(page).fill(`${await editor(page).inputValue()}\n// x`);
   await page.locator('.topbar button[aria-haspopup="dialog"]').click();
   await expect(page.locator('.popover')).toBeVisible();
   await page.keyboard.press('Escape');
