@@ -847,6 +847,9 @@ dialog h2 {
 }
 
 @media (max-width: 639px) {
+  .item-actions .item-meta {
+    display: none;
+  }
   .segmented {
     display: inline-flex;
     gap: var(--s-1);

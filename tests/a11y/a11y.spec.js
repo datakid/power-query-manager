@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fx, ext, openApp, loadFile, item, editor, runButton } from '../e2e/helpers.js';
+import { STATES, settle } from '../e2e/states.js';
 
 const require = createRequire(import.meta.url);
 const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
@@ -90,3 +91,19 @@ test('reduced motion removes the progress animation', async ({ page }) => {
   const dur = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dur-fast').trim());
   expect(dur).toBe('0ms');
 });
+
+const AUDITED = ['01-empty', '03-query-selected', '05-result-10000-rows', '08-vba-module', '09-settings-dialog'];
+
+for (const theme of ['light', 'dark']) {
+  for (const id of AUDITED) {
+    test(`T-I-03: axe is clean on ${id} in the ${theme} theme`, async ({ browser }) => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: theme, reducedMotion: 'reduce' });
+      const page = await ctx.newPage();
+      await openApp(page);
+      await STATES.find((s) => s.id === id).run(page);
+      await settle(page);
+      await audit(page, `${theme} ${id}`);
+      await ctx.close();
+    });
+  }
+}
