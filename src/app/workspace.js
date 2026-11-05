@@ -95,13 +95,14 @@ export class Workspace {
     this.runbar = h('div', { class: 'runbar' }, this.splitter, this.runBtn, this.cancelBtn, this.steps, h('span', { class: 'spacer' }), this.diffLabel);
     this.progress = h('div', { class: 'progress', hidden: true, role: 'progressbar', 'aria-label': S.running });
     this.crumbs = h('div', { class: 'crumbs', hidden: true });
+    this.capNotice = h('div', { class: 'result-notice', hidden: true });
     this.resultBody = h('div', { class: 'result-body' });
     this.resultBody.style.display = 'flex';
     this.resultBody.style.flexDirection = 'column';
     this.resultBody.style.flex = '1';
     this.resultBody.style.minHeight = '0';
     this.sources = h('div', { class: 'crumbs', hidden: true });
-    this.resultPanel = h('div', { class: 'result-panel' }, this.progress, this.crumbs, this.resultBody, this.sources);
+    this.resultPanel = h('div', { class: 'result-panel' }, this.progress, this.crumbs, this.capNotice, this.resultBody, this.sources);
     this.segmented = h('div', { class: 'segmented', role: 'group', 'aria-label': S.pane },
       h('button', { type: 'button', 'aria-pressed': 'true', onclick: () => this.setPane('code') }, S.code),
       h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => this.setPane('result') }, S.result));
@@ -441,6 +442,7 @@ export class Workspace {
   }
 
   clearMessage() {
+    this.capNotice.hidden = true;
     if (this.messageEl) {
       this.messageEl.remove();
       this.messageEl = null;
@@ -467,6 +469,7 @@ export class Workspace {
     } catch (e) {
       if (e instanceof MParseError) {
         this.setMessage(S.lineCol(e.message, e.line, e.col), 'error');
+        this.messageEl.append(h('button', { class: 'btn btn-quiet', type: 'button', onclick: () => this.editor.goto(e.line, e.col) }, S.goToError));
         this.status.set({ run: { error: 'm.parse' }, compare: null });
         return;
       }
@@ -556,6 +559,7 @@ export class Workspace {
     if (res.status === 'parse-error') {
       const e = res.error;
       this.setMessage(`${S.lineCol(e.message, e.line, e.col)}${e.member && e.member !== this.item.name ? S.inMember(e.member) : ''}`, 'error');
+      if (!e.member || e.member === this.item.name) this.messageEl.append(h('button', { class: 'btn btn-quiet', type: 'button', onclick: () => this.editor.goto(e.line, e.col) }, S.goToError));
       this.status.set({ run: { error: 'm.parse' }, compare: null });
       return;
     }
@@ -618,7 +622,8 @@ export class Workspace {
     this.grid.el.hidden = false;
     this.grid.setCulture(this.settings.culture);
     this.grid.setData({ columns: t.columns, rowCount: t.rowCount, rows: t.rows, loader: remote && t.rowCount > t.rows.length ? (start, count) => this.runner.rows(start, count) : null });
-    if (t.truncated && !remote) this.status.set({ note: S.resultsTruncated });
+    this.capNotice.hidden = !t.truncated;
+    this.capNotice.textContent = t.truncated ? S.rowCapShown(formatsFor(this.settings.culture).integer.format(t.rows.length)) : '';
     this.grid.el.setAttribute('aria-label', S.resultAria(this.item ? this.item.name : ''));
   }
 
@@ -636,7 +641,7 @@ export class Workspace {
       return;
     }
     const text = v === null ? S.nullText : typeof v === 'object' ? v.text || v.special || kind : String(v);
-    this.setMessage(text, '');
+    this.setMessage(text, 'value');
     this.status.set({ run: { value: true, secs }, compare: null, flags });
   }
 

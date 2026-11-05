@@ -136,14 +136,16 @@ export class Grid {
     this.el.setAttribute('aria-rowcount', String(rowCount + 1));
     this.el.setAttribute('aria-colcount', String(columns.length + 1));
     this.sizer.style.width = `${this.totalWidth}px`;
-    this.sizer.style.height = `${HEAD_H + rowCount * ROW_H}px`;
+    const shown = rowCount === 0 ? 1 : rowCount;
+    this.sizer.style.height = `${HEAD_H + shown * ROW_H}px`;
     this.head.style.width = `${this.totalWidth}px`;
     this.head.style.height = `${HEAD_H}px`;
     this.body.style.top = `${HEAD_H}px`;
-    this.body.style.height = `${rowCount * ROW_H}px`;
+    this.body.style.height = `${shown * ROW_H}px`;
     this.el.scrollTop = 0;
     this.el.scrollLeft = 0;
     clear(this.body);
+    if (rowCount === 0) this.body.append(h('div', { class: 'grid-empty', role: 'row', 'aria-rowindex': '2' }, h('div', { role: 'gridcell', 'aria-colspan': String(columns.length + 1) }, S.emptyTable)));
     this.rowEls = new Map();
     this.headSig = '';
     this.paint();

@@ -1036,3 +1036,20 @@ dialog.wide {
   background: var(--minium-soft);
   color: var(--minium-ink);
 }
+
+.result-notice {
+  padding: var(--s-2) var(--s-4);
+  background: var(--sodium-soft);
+  color: var(--sodium-ink);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-sm);
+}
+
+.message.value {
+  font-family: var(--font-code);
+  font-size: var(--t-xl);
+  line-height: var(--t-xl-lh);
+  background: var(--raised);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}

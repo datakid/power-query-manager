@@ -83,6 +83,8 @@ export const S = {
   emptyList: 'The list is empty.',
   emptyTable: 'The table has no rows.',
   resultsTruncated: 'Showing the first rows only.',
+  rowCapShown: (n) => `Showing the first ${n} rows.`,
+  goToError: 'Go to the error',
   themeLabel: 'Theme',
   themeSystem: 'System',
   themeLight: 'Light',
