@@ -260,6 +260,28 @@ export function runAll() {
     if (JSON.stringify(list) !== JSON.stringify(expected)) add('T-LINT-14', join(root, name), 0, `policy differs from _headers: ${list.filter((d) => !expected.includes(d)).join(' | ')} / missing ${expected.filter((d) => !list.includes(d)).join(' | ')}`);
   }
 
+  const errorKeys = new Set();
+  const stringsEntry = parsed.get(join(root, 'src', 'ui', 'strings.js'));
+  if (stringsEntry) {
+    visit(stringsEntry.ast, (n) => {
+      if (n.type === 'VariableDeclarator' && n.id.name === 'ERRORS' && n.init && n.init.type === 'ObjectExpression') {
+        for (const prop of n.init.properties) errorKeys.add(prop.key.value !== undefined ? prop.key.value : prop.key.name);
+      }
+    });
+  }
+  if (!errorKeys.size) add('T-LINT-15', join(root, 'src', 'ui', 'strings.js'), 0, 'ERRORS table not found');
+  for (const f of srcJs) {
+    const entry = parsed.get(f);
+    if (!entry) continue;
+    visit(entry.ast, (n) => {
+      if (n.type === 'NewExpression' && n.callee.type === 'Identifier' && n.callee.name === 'QuoinError') {
+        const first = n.arguments[0];
+        if (!first || first.type !== 'Literal' || typeof first.value !== 'string') add('T-LINT-15', f, n.loc.start.line, 'QuoinError code must be a string literal');
+        else if (errorKeys.size && !errorKeys.has(first.value)) add('T-LINT-15', f, n.loc.start.line, `no message for ${first.value}`);
+      }
+    });
+  }
+
   const fontDir = join(root, 'public', 'fonts');
   const cssText = all.filter((p) => extname(p) === '.css' && rel(p).startsWith('styles/')).map(read).join('\n');
   for (const name of readdirSync(fontDir)) {

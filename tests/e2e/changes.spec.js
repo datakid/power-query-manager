@@ -73,3 +73,24 @@ test('T-E-02: cancelling the confirmation keeps the edits', async ({ page }) => 
   await expect(page.locator('dialog[open] h2')).toHaveText('Changes');
   await expect(downloadButton(page)).toHaveAccessibleName('Download — 2 changes');
 });
+
+test('T-E-11: opening another file with unsaved changes asks in the page, not in a browser box', async ({ page }) => {
+  const native = [];
+  page.on('dialog', (d) => {
+    native.push(d.type());
+    d.dismiss();
+  });
+  await openApp(page);
+  await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await editTwo(page);
+  await page.setInputFiles('input[type=file]', ext('pq_simple.xlsx'));
+  await expect(page.locator('dialog[open] h2')).toHaveText('Open another file');
+  await expect(page.locator('dialog[open]')).toContainText('discards 2 unsaved changes');
+  await page.locator('dialog[open]').getByRole('button', { name: 'Cancel' }).click();
+  await expect(downloadButton(page)).toHaveAccessibleName('Download — 2 changes');
+  await page.setInputFiles('input[type=file]', ext('pq_simple.xlsx'));
+  await page.locator('dialog[open]').getByRole('button', { name: 'Discard and open' }).click();
+  await expect(page.locator('.file-name')).toHaveText('pq_simple.xlsx');
+  await expect(downloadButton(page)).toHaveAttribute('aria-disabled', 'true');
+  expect(native.filter((t) => t !== 'beforeunload')).toEqual([]);
+});

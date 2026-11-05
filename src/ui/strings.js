@@ -1,3 +1,10 @@
+const STATUS_ERRORS = {
+  'm.parse': 'Syntax error',
+  'm.timeout': 'Stopped at the time limit',
+  'm.rows': 'Stopped at the row limit',
+  'm.depth': 'Stopped: too deep'
+};
+
 export const S = {
   appName: 'quoin',
   tagline: 'The working parts of a workbook.',
@@ -121,6 +128,9 @@ export const S = {
   fileSheets: 'Sheets',
   fileTables: 'Tables',
   unsavedLeave: 'You have unsaved edits. Leave anyway?',
+  discardTitle: 'Open another file',
+  discardBody: (n) => `Opening another file discards ${n} unsaved ${n === 1 ? 'change' : 'changes'}.`,
+  discard: 'Discard and open',
   readFailed: 'The file could not be read.',
   noSelection: 'Select a query or a module.',
   noDataModelNote: 'The data model is not read.',
@@ -150,7 +160,7 @@ export const S = {
   rowsWord: 'rows',
   runStatus: (n, secs, nText) => `${nText} ${n === 1 ? 'row' : 'rows'} · ${secs} s`,
   valueStatus: (secs) => `Value · ${secs} s`,
-  errorStatus: (code) => `Error: ${code}`,
+  errorStatus: (code) => (STATUS_ERRORS[code] ? STATUS_ERRORS[code] : `Error: ${code}`),
   rowCountDiffers: (got, expected) => `Row count differs (${got} vs ${expected})`,
   cellsDiffer: (nText) => `Differs from the last Excel refresh in ${nText} cells`,
   itemsEdited: (n) => `${n} ${n === 1 ? 'item' : 'items'} edited`,
@@ -189,7 +199,7 @@ export function fmt(template, values) {
   return template.replace(/\{(\w+)\}/g, (m, k) => (k in values ? String(values[k]) : m));
 }
 
-const ERRORS = {
+export const ERRORS = {
   'file.tooLarge': 'This file is larger than 200 MB.',
   'file.notWorkbook': 'This is not an Excel workbook.',
   'file.encrypted': 'This workbook is encrypted. Remove the password in Excel first.',
@@ -210,18 +220,58 @@ const ERRORS = {
   'vba.tooLarge': 'This macro is larger than {max} bytes.',
   'vba.signature': 'The VBA project was signed. Editing removes the signature.',
   'm.parse': '{message}',
-  'm.unsupported': '{name} is not available in Quoin.',
-  'm.offline': '{name} is not available offline. Map it to a local file.',
   'm.timeout': 'Stopped after {s} s.',
   'm.rows': 'Stopped at {n} rows.',
   'm.depth': 'Stopped: recursion is too deep.',
+  'zip.eocd': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.central': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.local': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.range': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.size': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.crc': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.inflate': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.name': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.duplicate': 'The file is damaged and could not be read. Open it in Excel, save a copy and try that copy.',
+  'zip.method': 'This file uses a compression method quoin does not read. Open it in Excel and save a copy.',
+  'zip.zip64': 'This file uses ZIP64 storage, which quoin does not read. Open it in Excel and save a copy.',
+  'zip.encrypted': 'This file is password protected. Remove the password in Excel first.',
+  'zip.write': 'The workbook could not be assembled. Nothing was downloaded; try again.',
+  'limit.total': 'This file is too large or too deeply compressed to open safely. Remove large parts in Excel and try again.',
+  'limit.entry': 'This file is too large or too deeply compressed to open safely. Remove large parts in Excel and try again.',
+  'limit.cfb': 'This file is too large or too deeply compressed to open safely. Remove large parts in Excel and try again.',
+  'limit.ratio': 'This file is too large or too deeply compressed to open safely. Remove large parts in Excel and try again.',
+  'limit.entries': 'This file is too large or too deeply compressed to open safely. Remove large parts in Excel and try again.',
+  'cfb.loop': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.range': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.header': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.short': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.type': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.root': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.chain': 'The macro project is damaged and could not be read. The rest of the workbook is not affected.',
+  'cfb.write': 'The macro project could not be written. Nothing was downloaded.',
+  'ovba.chunk': 'The macro code is damaged and could not be read. The rest of the workbook is not affected.',
+  'ovba.offset': 'The macro code is damaged and could not be read. The rest of the workbook is not affected.',
+  'ovba.signature': 'The macro code is damaged and could not be read. The rest of the workbook is not affected.',
+  'vba.write': 'The macro project could not be written. Nothing was downloaded.',
+  'vba.dir': 'The macro project index is damaged and could not be read.',
+  'vba.unknown': 'A macro in the project was not found. Reopen the file and try again.',
+  'vba.compress': 'The macro code could not be compressed. Nothing was downloaded.',
+  'check.vba': 'The saved file did not match the edits, so nothing was downloaded. Copy the details and report them.',
+  'check.query': 'The saved file did not match the edits, so nothing was downloaded. Copy the details and report them.',
+  'check.part': 'The saved file did not match the edits, so nothing was downloaded. Copy the details and report them.',
+  'xml.parse': 'A part of the workbook is not valid XML and could not be read.',
+  'xml.edit': 'A part of the workbook could not be edited safely. Nothing was changed.',
+  'pq.unknown': "This workbook's query data could not be read. The queries are not shown.",
+  'pq.section': "This workbook's query data could not be read. The queries are not shown.",
+  'pq.package': "This workbook's query data could not be read. The queries are not shown.",
+  'pq.length': "This workbook's query data could not be read. The queries are not shown.",
+  'opc.contentTypes': 'The workbook index is damaged and could not be read.',
+  'cells.sheet': 'A sheet needed for the Excel comparison could not be read.',
+  'cells.ref': 'A cell reference in the workbook could not be read.',
   'write.selfcheck': 'The file could not be written safely. Nothing was downloaded.'
 };
 
 export function errorMessage(code, values = {}) {
   if (ERRORS[code]) return fmt(ERRORS[code], values);
-  if (code && code.startsWith('zip.')) return 'The file is damaged and could not be read.';
-  if (code && code.startsWith('limit.')) return 'This file is too large or too deeply compressed to open safely.';
-  if (code && code.startsWith('cfb.')) return 'The file is damaged and could not be read.';
   return S.readFailed;
 }

@@ -273,7 +273,7 @@ export class App {
       this.refuse(S.dropType);
       return;
     }
-    if (this.session.editCount > 0 && !window.confirm(S.unsavedLeave)) return;
+    if (this.session.editCount > 0 && !(await confirmDialog({ title: S.discardTitle, body: S.discardBody(this.session.editCount), confirmLabel: S.discard }))) return;
     const next = new Session();
     this.status.set({ run: null, compare: null, note: '', edits: 0, counts: '', alertText: '' });
     try {
