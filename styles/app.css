@@ -1031,3 +1031,8 @@ dialog.wide {
     max-width: 100vw;
   }
 }
+
+.info-strip.problem {
+  background: var(--minium-soft);
+  color: var(--minium-ink);
+}

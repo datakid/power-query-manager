@@ -5,6 +5,7 @@ import { checkSection, parseSection } from '../core/m/engine.js';
 import { rebuildSection, normalizeQueryText } from '../core/pq/section.js';
 import { composeModuleText } from '../core/vba/writeback.js';
 import { suggestedFileName } from '../core/filename.js';
+import { validateModuleText } from '../core/vba/validate.js';
 import { QuoinError } from '../core/errors.js';
 
 export class Session {
@@ -112,6 +113,22 @@ export class Session {
     const edits = new Map();
     for (const [name, text] of this.queryEdits) edits.set(name, normalizeQueryText(text));
     return rebuildSection(mashup.section.text, mashup.split.members.filter((m) => edits.has(m.name)), edits);
+  }
+
+  validateModule(name, text) {
+    const project = this.wb && this.wb.vba && this.wb.vba.project;
+    const mod = this.module(name);
+    if (!project || !mod) return [];
+    return validateModuleText({ text, codePage: project.codePage, originalBytes: mod.sourceBytes });
+  }
+
+  vbaProblems() {
+    const out = new Map();
+    for (const [name, text] of this.moduleEdits) {
+      const problems = this.validateModule(name, text);
+      if (problems.length) out.set(name, problems);
+    }
+    return out;
   }
 
   async snapshot() {

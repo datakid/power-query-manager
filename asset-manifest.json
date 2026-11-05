@@ -1,5 +1,5 @@
 {
-  "version": "f54f15208c0f97c3",
+  "version": "804351a3b022e03b",
   "files": [
     "./",
     "index.html",
@@ -79,6 +79,7 @@
     "src/core/vba/ovba-compress.js",
     "src/core/vba/ovba-decompress.js",
     "src/core/vba/project-stream.js",
+    "src/core/vba/validate.js",
     "src/core/vba/vba-project.js",
     "src/core/vba/writeback.js",
     "src/core/workbook.js",

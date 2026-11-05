@@ -337,6 +337,7 @@ export class Workspace {
     const ed = isQuery ? s.queryEditable() : s.moduleEditable(item.name);
     this.editor.setReadOnly(!ed.editable);
     this.info.hidden = false;
+    this.info.classList.remove('problem');
     clear(this.info);
     if (!isQuery) {
       this.info.append(S.vbaInfo);
@@ -349,6 +350,7 @@ export class Workspace {
       this.meta.textContent = loadLabel(s.query(item.name).load);
     }
     this.revertBtn.hidden = !s.isEdited(item);
+    if (!isQuery && s.isEdited(item)) this.checkModule(s.textOf(item));
     this.clearResult();
     if (isQuery) this.checkLive(this.editor.getText());
     this.setPane('code');
@@ -360,11 +362,27 @@ export class Workspace {
     s.setText(this.item, text);
     this.revertBtn.hidden = !s.isEdited(this.item);
     this.markEdited(this.item);
-    if (this.item.type === 'query') {
-      clearTimeout(this.liveTimer);
-      this.liveTimer = setTimeout(() => this.checkLive(text), 250);
-    }
+    clearTimeout(this.liveTimer);
+    if (this.item.type === 'query') this.liveTimer = setTimeout(() => this.checkLive(text), 250);
+    else this.liveTimer = setTimeout(() => this.checkModule(text), 300);
     for (const fn of this.onEditCallbacks) fn();
+  }
+
+  checkModule(text) {
+    if (!this.item || this.item.type !== 'module') return;
+    const problems = this.session.validateModule(this.item.name, text);
+    clear(this.info);
+    if (!problems.length) {
+      this.editor.setError(null);
+      this.info.classList.remove('problem');
+      this.info.append(S.vbaInfo);
+      return;
+    }
+    const p = problems[0];
+    const message = errorMessage(p.code, p);
+    this.editor.setError({ message, line: p.line, col: p.col, start: p.start, end: p.end });
+    this.info.classList.add('problem');
+    this.info.append(message);
   }
 
   checkLive(text) {

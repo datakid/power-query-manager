@@ -1,6 +1,6 @@
 import { lcsMap } from '../diff.js';
 
-const ATTRIBUTE_LINE = /^\s*Attribute\s+\S/i;
+export const ATTRIBUTE_LINE = /^\s*Attribute\s+\S/i;
 
 export function splitLines(text) {
   return text.split(/\r\n|\r|\n/);

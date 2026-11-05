@@ -349,11 +349,14 @@ export class App {
     const refresh = h('input', { type: 'checkbox', id: 'dl-refresh', checked: true });
     const ack = h('input', { type: 'checkbox', id: 'dl-ack' });
     const msg = h('p', { class: 'warn', role: 'alert', hidden: true });
-    const go = h('button', { class: 'btn btn-primary', type: 'button', disabled: qn + mn === 0 || signed }, S.download);
+    const blocked = s.vbaProblems();
+    const firstBlocked = blocked.size ? [...blocked][0] : null;
+    const go = h('button', { class: 'btn btn-primary', type: 'button', disabled: qn + mn === 0 || signed || blocked.size > 0 }, S.download);
     const content = h('div', { class: 'popover-body' },
       h('p', null, qn + mn === 0 ? S.downloadNone : S.changedSummary(qn, mn)),
       qn ? h('label', { class: 'check', for: 'dl-refresh' }, refresh, S.refreshOnOpen) : null,
       qn ? h('p', { class: 'note' }, S.cacheNote) : null,
+      firstBlocked ? h('p', { class: 'warn', role: 'alert' }, S.vbaBlocked(firstBlocked[0], errorMessage(firstBlocked[1][0].code, firstBlocked[1][0]))) : null,
       signed ? h('p', { class: 'warn' }, S.signedNote) : null,
       signed ? h('label', { class: 'check', for: 'dl-ack' }, ack, S.understand) : null,
       msg,
@@ -363,7 +366,7 @@ export class App {
       } }, S.reviewChanges), go));
     const pop = popover(this.downloadBtn, content, null, S.download);
     ack.addEventListener('change', () => {
-      go.disabled = !ack.checked || qn + mn === 0;
+      go.disabled = !ack.checked || qn + mn === 0 || blocked.size > 0;
     });
     go.addEventListener('click', async () => {
       go.disabled = true;
