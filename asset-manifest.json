@@ -1,5 +1,5 @@
 {
-  "version": "f69c7f0b508c48b9",
+  "version": "f54f15208c0f97c3",
   "files": [
     "./",
     "index.html",
@@ -32,6 +32,7 @@
     "src/core/compare/cache-compare.js",
     "src/core/cp437.js",
     "src/core/crc32.js",
+    "src/core/diff.js",
     "src/core/errors.js",
     "src/core/export/cells.js",
     "src/core/export/csv.js",

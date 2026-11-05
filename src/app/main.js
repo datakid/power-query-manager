@@ -2,7 +2,7 @@ import { h, clear } from '../ui/dom.js';
 import { S, errorMessage, fmt } from '../ui/strings.js';
 import { formatsFor } from '../ui/formats.js';
 import { markImg, syncMarks, watchMarks } from '../ui/mark.js';
-import { settingsDialog, shortcutsDialog, detailsDialog, menu, popover } from '../ui/dialogs.js';
+import { settingsDialog, shortcutsDialog, detailsDialog, changesDialog, confirmDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
 import { queryFile, moduleFile, zipFiles, sanitizeFileName } from '../core/export/files.js';
@@ -357,7 +357,10 @@ export class App {
       signed ? h('p', { class: 'warn' }, S.signedNote) : null,
       signed ? h('label', { class: 'check', for: 'dl-ack' }, ack, S.understand) : null,
       msg,
-      h('div', { class: 'dialog-actions' }, go));
+      h('div', { class: 'dialog-actions' }, h('button', { class: 'btn btn-quiet', type: 'button', onclick: () => {
+        pop.close();
+        this.openChanges();
+      } }, S.reviewChanges), go));
     const pop = popover(this.downloadBtn, content, null, S.download);
     ack.addEventListener('change', () => {
       go.disabled = !ack.checked || qn + mn === 0;
@@ -378,6 +381,21 @@ export class App {
       }
     });
     (qn + mn === 0 ? content : go).focus && go.focus();
+  }
+
+  openChanges() {
+    changesDialog(this.session.changes(), {
+      onRevertAll: async () => {
+        const n = this.session.editCount;
+        const ok = await confirmDialog({ title: S.revertAllTitle, body: S.revertAllBody(n), confirmLabel: S.revertAll });
+        if (!ok) {
+          this.openChanges();
+          return;
+        }
+        this.ws.revertAll();
+        this.status.set({ note: S.revertedAll });
+      }
+    });
   }
 
   async exportResult(format, ext) {

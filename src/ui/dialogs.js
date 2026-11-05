@@ -1,5 +1,6 @@
 import { h, clear, placeBelow, onOutside } from './dom.js';
 import { S, errorMessage } from './strings.js';
+import { diffLines, diffStats, hunkLines } from '../core/diff.js';
 import { supportedCultures } from '../core/m/culture.js';
 
 const layers = [];
@@ -188,3 +189,72 @@ export function popover(anchor, content, onClose, label) {
 }
 
 export { clear, errorMessage };
+
+export function confirmDialog({ title, body, confirmLabel }) {
+  return new Promise((resolve) => {
+    let ok = false;
+    const dlg = h(
+      'dialog',
+      { 'aria-labelledby': 'cf-title' },
+      h('h2', { id: 'cf-title' }, title),
+      h('p', null, body),
+      h('div', { class: 'dialog-actions' },
+        h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, S.cancel),
+        h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
+          ok = true;
+          dlg.close();
+        } }, confirmLabel))
+    );
+    dlg.addEventListener('close', () => resolve(ok));
+    openDialog(dlg);
+  });
+}
+
+function diffTable(name, before, after) {
+  const rows = hunkLines(diffLines(before, after), 3);
+  const glyph = { add: '+', del: '−', same: ' ' };
+  const label = { add: S.diffAdded, del: S.diffRemoved, same: S.diffContext };
+  return h('div', { class: 'diff-scroll' },
+    h('table', { class: 'diff' },
+      h('caption', { class: 'sr-only' }, S.diffCaption(name)),
+      h('thead', { class: 'sr-only' }, h('tr', null, h('th', null, S.diffOld), h('th', null, S.diffNew), h('th', null, ''), h('th', null, ''))),
+      h('tbody', null, ...rows.map((r) => (r.kind === 'gap'
+        ? h('tr', { class: 'diff-gap' }, h('td', { colspan: '4' }, S.diffGap(r.hidden)))
+        : h('tr', { class: `diff-${r.kind}` },
+          h('td', { class: 'diff-no' }, r.a === undefined ? '' : String(r.a)),
+          h('td', { class: 'diff-no' }, r.b === undefined ? '' : String(r.b)),
+          h('td', { class: 'diff-mark', 'aria-label': label[r.kind] }, glyph[r.kind]),
+          h('td', { class: 'diff-text' }, r.text || ' ')))))));
+}
+
+export function changesDialog(changes, { onRevertAll }) {
+  const entries = [
+    ...[...changes.queries].map(([name, c]) => ({ kind: S.changesQueryKind, name, ...c })),
+    ...[...changes.modules].map(([name, c]) => ({ kind: S.changesModuleKind, name, ...c }))
+  ];
+  const sections = entries.map((e) => {
+    const stats = diffStats(diffLines(e.original, e.current));
+    const det = h('details', { class: 'change-item' },
+      h('summary', null,
+        h('span', { class: 'change-name' }, e.name),
+        h('span', { class: 'item-meta' }, e.kind),
+        h('span', { class: 'change-stats item-meta' }, S.changeStats(stats.added, stats.removed))));
+    det.addEventListener('toggle', () => {
+      if (det.open && !det.querySelector('.diff-scroll')) det.append(diffTable(e.name, e.original, e.current));
+    });
+    return det;
+  });
+  const dlg = h(
+    'dialog',
+    { class: 'wide', 'aria-labelledby': 'ch-title' },
+    h('h2', { id: 'ch-title' }, S.changesTitle),
+    h('div', { class: 'change-list' }, ...sections),
+    h('div', { class: 'dialog-actions' },
+      h('button', { class: 'btn', type: 'button', onclick: () => {
+        dlg.close();
+        onRevertAll();
+      } }, S.revertAll),
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => dlg.close() }, S.close))
+  );
+  return openDialog(dlg);
+}

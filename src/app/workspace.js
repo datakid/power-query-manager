@@ -387,6 +387,18 @@ export class Workspace {
     for (const fn of this.onEditCallbacks) fn();
   }
 
+  revertAll() {
+    const names = [...this.session.queryEdits.keys()].map((name) => ({ type: 'query', name })).concat([...this.session.moduleEdits.keys()].map((name) => ({ type: 'module', name })));
+    for (const it of names) this.session.revert(it);
+    for (const it of names) this.markEdited(it);
+    if (this.item) {
+      this.editor.setText(this.session.textOf(this.item));
+      this.revertBtn.hidden = true;
+      if (this.item.type === 'query') this.checkLive(this.editor.getText());
+    }
+    for (const fn of this.onEditCallbacks) fn();
+  }
+
   clearResult() {
     this.grid.el.hidden = true;
     this.crumbs.hidden = true;

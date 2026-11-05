@@ -49,3 +49,21 @@ test('T-E-03: a large pair of inputs still returns', () => {
   assert.equal(diffStats(d).added, 15);
   assert.equal(diffStats(d).removed, 15);
 });
+
+import { hunkLines } from '../../src/core/diff.js';
+
+test('T-E-03: hunks keep three lines of context and name the lines they hide', () => {
+  const a = Array.from({ length: 30 }, (_, i) => `l${i}`);
+  const b = [...a];
+  b[15] = 'changed';
+  const h = hunkLines(diffLines(a.join('\n'), b.join('\n')), 3);
+  assert.deepEqual(h.map((l) => l.kind), ['gap', 'same', 'same', 'same', 'del', 'add', 'same', 'same', 'same', 'gap']);
+  assert.equal(h[0].hidden, 12);
+  assert.equal(h[h.length - 1].hidden, 11);
+});
+
+test('T-E-03: nothing changed gives a single gap, and a change at the edge has no leading gap', () => {
+  assert.deepEqual(hunkLines(diffLines('a\nb', 'a\nb')), [{ kind: 'gap', hidden: 2 }]);
+  const h = hunkLines(diffLines('a\nb\nc\nd\ne\nf\ng', 'x\nb\nc\nd\ne\nf\ng'), 1);
+  assert.equal(h[0].kind, 'del');
+});

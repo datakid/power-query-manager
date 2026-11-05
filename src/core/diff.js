@@ -64,3 +64,22 @@ export function diffStats(lines) {
   }
   return { added, removed };
 }
+
+export function hunkLines(lines, context = 3) {
+  const keep = new Array(lines.length).fill(false);
+  lines.forEach((l, i) => {
+    if (l.kind === 'same') return;
+    for (let k = Math.max(0, i - context); k <= Math.min(lines.length - 1, i + context); k++) keep[k] = true;
+  });
+  const out = [];
+  let hidden = 0;
+  lines.forEach((l, i) => {
+    if (keep[i]) {
+      if (hidden) out.push({ kind: 'gap', hidden });
+      hidden = 0;
+      out.push(l);
+    } else hidden++;
+  });
+  if (hidden) out.push({ kind: 'gap', hidden });
+  return out;
+}
