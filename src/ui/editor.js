@@ -178,6 +178,12 @@ export class Editor {
       this.openFind();
       return;
     }
+    if (ev.key === 'F3') {
+      ev.preventDefault();
+      if (!this.findState.open) this.openFind();
+      else this.stepFind(ev.shiftKey ? -1 : 1);
+      return;
+    }
     if (this.fallback && mod && ev.key.toLowerCase() === 'z') {
       ev.preventDefault();
       if (ev.shiftKey) this.redoFallback();

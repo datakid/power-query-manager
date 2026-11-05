@@ -226,6 +226,12 @@ export class Workspace {
     return [...this.rail.querySelectorAll('[role="treeitem"]')];
   }
 
+  focusRail() {
+    const stop = this.rail.querySelector('[role="treeitem"][tabindex="0"]');
+    if (stop && stop.offsetParent !== null) stop.focus();
+    else this.runBtn.focus();
+  }
+
   syncRailSelection() {
     const all = this.railItems();
     let stop = null;

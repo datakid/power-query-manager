@@ -240,6 +240,7 @@ export class App {
   }
 
   onKey(ev) {
+    if (ev.key !== 'Escape' && document.querySelector('dialog[open]')) return;
     const mod = ev.ctrlKey || ev.metaKey;
     const key = ev.key.toLowerCase();
     if (mod && key === 'o') {
@@ -306,6 +307,7 @@ export class App {
     this.status.set({ counts: S.fileCounts(next.queries.length, next.modules.length) });
     this.ws.renderRail();
     this.ws.selectFirst();
+    this.ws.focusRail();
     this.announceWarnings();
     document.title = S.titleWithApp(file.name);
   }

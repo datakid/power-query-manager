@@ -191,6 +191,8 @@ export const S = {
     ['Ctrl/Cmd+Shift+E', 'Open the Export menu'],
     ['Alt+Up / Alt+Down', 'Previous or next item in the rail'],
     ['Ctrl/Cmd+F', 'Find in the editor'],
+    ['F3 / Shift+F3', 'Next or previous match'],
+    ['Ctrl/Cmd+Z / Shift+Ctrl/Cmd+Z', 'Undo or redo in the editor'],
     ['?', 'This sheet']
   ]
 };
