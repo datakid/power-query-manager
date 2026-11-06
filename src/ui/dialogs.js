@@ -190,7 +190,7 @@ export function popover(anchor, content, onClose, label) {
 
 export { clear, errorMessage };
 
-export function confirmDialog({ title, body, confirmLabel }) {
+export function confirmDialog({ title, body, confirmLabel, cancelLabel }) {
   return new Promise((resolve) => {
     let ok = false;
     const dlg = h(
@@ -199,7 +199,7 @@ export function confirmDialog({ title, body, confirmLabel }) {
       h('h2', { id: 'cf-title' }, title),
       h('p', null, body),
       h('div', { class: 'dialog-actions' },
-        h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, S.cancel),
+        h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, cancelLabel || S.cancel),
         h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
           ok = true;
           dlg.close();

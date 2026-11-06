@@ -2,6 +2,7 @@ import { h, clear } from '../ui/dom.js';
 import { S, errorMessage, fmt } from '../ui/strings.js';
 import { formatsFor } from '../ui/formats.js';
 import { markImg, syncMarks, watchMarks } from '../ui/mark.js';
+import { hasFilePicker, writeThroughPicker } from './file-save.js';
 import { settingsDialog, shortcutsDialog, detailsDialog, changesDialog, confirmDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
@@ -42,6 +43,12 @@ function saveBytes(bytes, name, mime) {
 }
 
 const STATUS_INTERVAL_MS = 500;
+const WORKBOOK_MIMES = {
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+  xltx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+  xltm: 'application/vnd.ms-excel.template.macroEnabled.12'
+};
 const OPENABLE_NAME = /\.(xlsx|xlsm|xltx|xltm|xls|xlsb|ods)$/i;
 
 class Status {
@@ -215,12 +222,14 @@ export class App {
 
   handleDrop(dt) {
     if (!dt) return;
+    const first = dt.items && dt.items[0];
+    const handle = first && typeof first.getAsFileSystemHandle === 'function' ? first.getAsFileSystemHandle().catch(() => null) : null;
     const files = [...(dt.files || [])];
     const items = [...(dt.items || [])];
     const folder = items.some((it) => it.kind === 'file' && typeof it.webkitGetAsEntry === 'function' && (it.webkitGetAsEntry() || {}).isDirectory);
     if (folder) this.refuse(S.dropFolder);
     else if (files.length > 1) this.refuse(S.dropOne);
-    else if (files.length === 1) this.openFile(files[0]);
+    else if (files.length === 1) this.openFile(files[0], handle);
   }
 
   syncDownload() {
@@ -269,7 +278,7 @@ export class App {
     }
   }
 
-  async openFile(file) {
+  async openFile(file, handlePromise) {
     if (!OPENABLE_NAME.test(file.name)) {
       this.refuse(S.dropType);
       return;
@@ -284,6 +293,7 @@ export class App {
       this.showEmpty(errorMessage(code));
       return;
     }
+    next.sourceHandle = handlePromise ? await handlePromise : null;
     this.session = next;
     this.settings = { ...this.settings };
     clear(this.mainEl);
@@ -374,9 +384,12 @@ export class App {
       go.disabled = true;
       try {
         const res = await s.download({ refreshOnLoad: refresh.checked, acknowledgeSignature: ack.checked, faultInject: this.faultInject });
-        saveBytes(res.bytes, s.suggestedName(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        const saved = await this.saveWorkbook(res.bytes);
+        if (!saved) {
+          go.disabled = false;
+          return;
+        }
         pop.close();
-        this.status.set({ note: S.downloaded(s.suggestedName()) });
       } catch (e) {
         const code = e instanceof QuoinError ? e.code : 'write.selfcheck';
         msg.hidden = false;
@@ -386,6 +399,29 @@ export class App {
       }
     });
     (qn + mn === 0 ? content : go).focus && go.focus();
+  }
+
+  async saveWorkbook(bytes) {
+    const s = this.session;
+    const name = s.suggestedName();
+    const mime = WORKBOOK_MIMES[name.slice(name.lastIndexOf('.') + 1)] || WORKBOOK_MIMES.xlsx;
+    if (hasFilePicker()) {
+      const out = await writeThroughPicker({
+        bytes,
+        name,
+        mime,
+        extension: name.slice(name.lastIndexOf('.') + 1),
+        description: S.workbookFileType,
+        sourceHandle: s.sourceHandle,
+        confirmReplace: (n) => confirmDialog({ title: S.replaceTitle, body: S.replaceBody(n), confirmLabel: S.replaceConfirm, cancelLabel: S.chooseAnotherName })
+      });
+      if (!out) return false;
+      this.status.set({ note: S.savedTo(out.name) });
+      return true;
+    }
+    saveBytes(bytes, name, mime);
+    this.status.set({ note: S.downloaded(name) });
+    return true;
   }
 
   openChanges() {

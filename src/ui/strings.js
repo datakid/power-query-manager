@@ -174,6 +174,12 @@ export const S = {
   cellsDiffer: (nText) => `Differs from the last Excel refresh in ${nText} cells`,
   itemsEdited: (n) => `${n} ${n === 1 ? 'item' : 'items'} edited`,
   downloaded: (name) => `Downloaded ${name}`,
+  savedTo: (name) => `Saved ${name} and read it back to check it.`,
+  workbookFileType: 'Excel workbook',
+  replaceTitle: 'Replace the original file',
+  replaceBody: (name) => `${name} is the file you opened. Saving here replaces it.`,
+  replaceConfirm: 'Replace the original',
+  chooseAnotherName: 'Choose another name',
   changedSummary: (qn, mn) => `${qn ? `${qn} ${qn === 1 ? 'query' : 'queries'}` : ''}${qn && mn ? ' and ' : ''}${mn ? `${mn} ${mn === 1 ? 'module' : 'modules'}` : ''} changed.`,
   fileMeta: (bytes) => `${(bytes / 1024).toFixed(1)} KB`,
   sizeKb: (bytes) => `${(bytes / 1024).toFixed(1)} KB`,
@@ -279,6 +285,7 @@ export const ERRORS = {
   'opc.contentTypes': 'The workbook index is damaged and could not be read.',
   'cells.sheet': 'A sheet needed for the Excel comparison could not be read.',
   'cells.ref': 'A cell reference in the workbook could not be read.',
+  'write.verify': 'The saved file did not read back the same as what was written, so it may be damaged. Save it again or download it instead.',
   'write.selfcheck': 'The file could not be written safely. Nothing was downloaded.'
 };
 
