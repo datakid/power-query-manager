@@ -127,6 +127,7 @@
 - `openApp` removes `showSaveFilePicker` so the existing download-event tests keep using the download path; the picker path has its own tests with a stub.
 - T-A11Y-2 starts its Tab walk from the first top-bar control, because focus now starts on the rail after a file opens (E-12).
 - T-B-14 and the overlay test were already adjusted in earlier phases for the disabled Download button.
+- grid.spec 'a syntax error blocks the run': the message now also holds the Go to the error button, so the exact-text assertion became contains plus a check for the button (E-7).
 - Baselines 05 and 07 were regenerated for the Download label and the plain status text.
 
 ### Not reproduced
