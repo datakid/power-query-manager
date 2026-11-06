@@ -93,7 +93,7 @@ export function detailsDialog(rows) {
   return openDialog(dlg);
 }
 
-export function bindingDialog(kind, key) {
+export function bindingDialog(kind, key, queryName) {
   return new Promise((resolve) => {
     let chosen = null;
     const input = h('input', { type: 'file', class: 'sr-only', id: 'bind-file', tabindex: '-1' });
@@ -105,7 +105,7 @@ export function bindingDialog(kind, key) {
       'dialog',
       { 'aria-labelledby': 'bind-title' },
       h('h2', { id: 'bind-title' }, kind === 'web' ? S.bindingTitleWeb : S.bindingTitleFile),
-      h('p', { class: 'code-text' }, key),
+      h('p', null, S.bindingWants(queryName, key)),
       kind === 'web' ? h('p', { class: 'item-meta' }, S.bindingWebNote) : null,
       input,
       h('div', { class: 'dialog-actions' },

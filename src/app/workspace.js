@@ -507,7 +507,7 @@ export class Workspace {
   }
 
   async askBinding(kind, key) {
-    const file = await bindingDialog(kind, key);
+    const file = await bindingDialog(kind, key, this.item ? this.item.name : '');
     if (!file) return null;
     const b = await this.session.addBinding(key, file);
     this.renderSources();
