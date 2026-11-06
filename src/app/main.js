@@ -3,6 +3,7 @@ import { S, errorMessage, fmt } from '../ui/strings.js';
 import { formatsFor } from '../ui/formats.js';
 import { markImg, syncMarks, watchMarks } from '../ui/mark.js';
 import { hasFilePicker, writeThroughPicker } from './file-save.js';
+import { openPrintPreview, printWithoutPreview } from '../ui/print-preview.js';
 import { settingsDialog, shortcutsDialog, detailsDialog, changesDialog, confirmDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
@@ -142,13 +143,14 @@ export class App {
     this.fileTail = h('span', { class: 'fn-tail' });
     this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() }, this.fileHead, this.fileTail);
     this.fileMeta = h('span', { class: 'file-meta item-meta', hidden: true });
+    this.printBtn = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => this.openPrint() }, S.print);
     this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
     this.downloadCount = h('span', { class: 'dl-count' });
     this.downloadBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, 'aria-disabled': true, title: S.downloadNone, onclick: () => this.openDownload() }, S.download, this.downloadCount);
     this.topbar = h('header', { class: 'topbar' },
       h('h1', { class: 'brand' }, markImg('brand-mark', 28), h('span', { class: 'wordmark' }, S.appName)),
-      this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.exportBtn, this.settingsBtn, this.downloadBtn);
+      this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.printBtn, this.exportBtn, this.settingsBtn, this.downloadBtn);
     this.input = h('input', { type: 'file', class: 'sr-only', accept: '.xlsx,.xlsm,.xltx,.xltm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', tabindex: '-1', 'aria-label': S.chooseFile });
     this.input.addEventListener('change', () => {
       if (this.input.files && this.input.files[0]) this.openFile(this.input.files[0]);
@@ -171,6 +173,7 @@ export class App {
     this.ws = null;
     this.fileBtn.hidden = true;
     this.fileMeta.hidden = true;
+    this.printBtn.hidden = true;
     this.exportBtn.hidden = true;
     this.downloadBtn.hidden = true;
     this.zone = h('div', { class: 'dropzone' }, h('p', { class: 'item-meta' }, S.emptyPrompt), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => this.input.click() }, S.chooseFile));
@@ -183,6 +186,7 @@ export class App {
   }
 
   bindGlobal() {
+    this.installPrintFallback();
     this.dragDepth = 0;
     const setOver = (on) => {
       if (this.zone) this.zone.classList.toggle('is-over', on);
@@ -232,6 +236,25 @@ export class App {
     else if (files.length === 1) this.openFile(files[0], handle);
   }
 
+  async openPrint() {
+    if (!this.ws || this.printView) return;
+    await openPrintPreview(this, this.printBtn);
+  }
+
+  installPrintFallback() {
+    window.addEventListener('beforeprint', () => {
+      if (this.printView || !this.ws) return;
+      this.tempPrint = printWithoutPreview(this);
+      if (this.tempPrint) document.body.append(this.tempPrint);
+    });
+    window.addEventListener('afterprint', () => {
+      if (this.tempPrint) {
+        this.tempPrint.remove();
+        this.tempPrint = null;
+      }
+    });
+  }
+
   syncDownload() {
     const n = this.session.editCount;
     this.downloadBtn.setAttribute('aria-disabled', String(n === 0));
@@ -249,6 +272,7 @@ export class App {
   }
 
   onKey(ev) {
+    if (this.printView) return;
     if (ev.key !== 'Escape' && document.querySelector('dialog[open]')) return;
     const mod = ev.ctrlKey || ev.metaKey;
     const key = ev.key.toLowerCase();
@@ -263,6 +287,9 @@ export class App {
     } else if (mod && key === 's') {
       ev.preventDefault();
       if (this.ws) this.openDownload();
+    } else if (mod && !ev.shiftKey && key === 'p') {
+      ev.preventDefault();
+      if (this.ws) this.openPrint();
     } else if (mod && ev.shiftKey && key === 'e') {
       ev.preventDefault();
       if (this.ws) this.openExport();
@@ -312,6 +339,7 @@ export class App {
     this.fileBtn.hidden = false;
     this.fileMeta.textContent = S.fileMeta(file.size);
     this.fileMeta.hidden = false;
+    this.printBtn.hidden = false;
     this.exportBtn.hidden = false;
     this.downloadBtn.hidden = false;
     this.status.set({ counts: S.fileCounts(next.queries.length, next.modules.length) });

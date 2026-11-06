@@ -80,6 +80,9 @@
   --syn-com: #56605A;
   --syn-op: #343B37;
   --syn-qid: #111413;
+  --print-paper: #FFFFFF;
+  --print-ink: #000000;
+  --print-rule: #6B6B6B;
   --scrim: rgb(17 20 19 / .32);
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / .18);
   color-scheme: light;
@@ -156,6 +159,9 @@
   --syn-com: #8A938C;
   --syn-op: #B9C0B8;
   --syn-qid: #E6EAE4;
+  --print-paper: #FFFFFF;
+  --print-ink: #000000;
+  --print-rule: #6B6B6B;
   --scrim: rgb(0 0 0 / .6);
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / .5);
   color-scheme: dark;
@@ -199,10 +205,49 @@
     --syn-com: #8A938C;
     --syn-op: #B9C0B8;
     --syn-qid: #E6EAE4;
-    --scrim: rgb(0 0 0 / .6);
+    --print-paper: #FFFFFF;
+  --print-ink: #000000;
+  --print-rule: #6B6B6B;
+  --scrim: rgb(0 0 0 / .6);
     --shadow-overlay: 0 8px 24px rgb(0 0 0 / .5);
     color-scheme: dark;
   }
+}
+
+.print-root {
+  --ground: #DCE0DA;
+  --surface: #EBEEE8;
+  --raised: #F7F8F5;
+  --sunk: #D0D5CE;
+  --line: #BCC3BA;
+  --line-strong: #768076;
+  --ink: #111413;
+  --ink-2: #343B37;
+  --ink-3: #4F5852;
+  --sodium: #FFC21F;
+  --sodium-hover: #F2B200;
+  --on-sodium: #111413;
+  --sodium-ink: #6E4E00;
+  --sodium-soft: #FCEDBF;
+  --marker: #6E4E00;
+  --cobalt: #2341C8;
+  --cobalt-ink: #2341C8;
+  --cobalt-soft: #DCE2FA;
+  --on-cobalt: #FFFFFF;
+  --minium: #C9400F;
+  --minium-ink: #A3330B;
+  --minium-soft: #F8E0D5;
+  --patina: #1B7F63;
+  --patina-ink: #13644E;
+  --patina-soft: #D3ECE3;
+  --syn-kw: #2341C8;
+  --syn-fn: #7A4F00;
+  --syn-str: #13644E;
+  --syn-num: #A3330B;
+  --syn-com: #56605A;
+  --syn-op: #343B37;
+  --syn-qid: #111413;
+  color-scheme: light;
 }
 
 @media (pointer: coarse) {

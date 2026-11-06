@@ -229,6 +229,16 @@
       "--readout-alert",
       "--readout",
       4.5
+    ],
+    [
+      "--print-ink",
+      "--print-paper",
+      4.5
+    ],
+    [
+      "--print-rule",
+      "--print-paper",
+      3.0
     ]
   ],
   "dark": [
@@ -461,6 +471,16 @@
       "--readout-alert",
       "--readout",
       4.5
+    ],
+    [
+      "--print-ink",
+      "--print-paper",
+      4.5
+    ],
+    [
+      "--print-rule",
+      "--print-paper",
+      3.0
     ]
   ],
   "exempt": {

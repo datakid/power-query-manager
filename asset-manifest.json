@@ -1,5 +1,5 @@
 {
-  "version": "804351a3b022e03b",
+  "version": "7eaa5139a18d62af",
   "files": [
     "./",
     "index.html",
@@ -22,6 +22,7 @@
     "public/mark-dark.svg",
     "public/mark.svg",
     "src/app/bootstrap.js",
+    "src/app/file-save.js",
     "src/app/main.js",
     "src/app/runner.js",
     "src/app/session.js",
@@ -69,6 +70,8 @@
     "src/core/pq/metadata.js",
     "src/core/pq/section.js",
     "src/core/pq/writeback.js",
+    "src/core/print/code-lines.js",
+    "src/core/print/layout.js",
     "src/core/save.js",
     "src/core/snapshot.js",
     "src/core/vba/cfb-read.js",
@@ -93,11 +96,14 @@
     "src/ui/grid.js",
     "src/ui/highlight.js",
     "src/ui/mark.js",
+    "src/ui/print-preview.js",
+    "src/ui/print-render.js",
     "src/ui/strings.js",
     "src/workers/m-worker.js",
     "styles/app.css",
     "styles/editor.css",
     "styles/grid.css",
+    "styles/print.css",
     "styles/tokens.css"
   ]
 }
