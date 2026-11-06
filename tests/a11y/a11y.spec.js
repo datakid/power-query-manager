@@ -46,6 +46,7 @@ for (const theme of ['light', 'dark']) {
 test('T-A11Y-2: tab order reaches the main regions and every control shows a visible focus ring', async ({ page }) => {
   await openApp(page);
   await loadFile(page, fx('mixed.xlsm'));
+  await page.locator('.topbar button').first().focus();
   const seen = new Set();
   for (let i = 0; i < 30; i++) {
     await page.keyboard.press('Tab');

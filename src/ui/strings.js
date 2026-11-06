@@ -121,7 +121,7 @@ export const S = {
   copyDetails: 'Copy details',
   bindingTitleFile: 'Choose a file',
   bindingTitleWeb: 'Choose a saved response',
-  bindingWants: (query, key) => `The query ${query} reads ${key}. Choose a local copy of it, or skip to let the query report that the source is missing.`,
+  bindingWants: (query, fn, key) => `The query ${query} calls ${fn} on ${key}. Choose a local copy of it, or skip to let the query report that the source is missing.`,
   bindingChoose: 'Choose a local file',
   bindingWebNote: 'Quoin does not connect to the internet. Choose a saved copy of this response.',
   matchesCache: 'Matches the last Excel refresh',

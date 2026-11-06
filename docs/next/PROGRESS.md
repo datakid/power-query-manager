@@ -105,3 +105,44 @@
 
 ### Manual checks still to do
 - The favicon in a real browser tab at 16 px in both OS schemes. It was checked as an `<img>` at 16, 24 and 32 px and reads clearly; a tab is not available here.
+
+## Phase 3 — Edit, run, save
+
+### Done
+- E-1 `Session.changes()` returns `{ queries, modules, count }`, computed each call; `editCount` and `isDirty()` read it. Download is `aria-disabled` with the title "No changes yet." when clean and its name becomes "Download — N changes" (the count is hidden below 700 px).
+- E-2 revert this item (existing button), revert all through the Changes dialog with a confirmation that names the count; the editor keeps its native undo.
+- E-3 `src/core/diff.js` (`diffLines`, `diffStats`, `hunkLines`; the LCS is shared with `module-source.js`); Changes dialog with one expandable unified diff per item, line numbers on both sides, glyph and colour.
+- E-4 `src/core/vba/validate.js` (NUL, lone surrogate, code page, 1023-character lines, typed `Attribute` lines, size limit); live check on edit with the gutter marker and the info strip; the Download popover names the problem and disables the button.
+- E-5 lifecycle test over done, runtime error, parse error, cancelled and timeout. No code change was needed; the Run and Cancel swap was fixed in Phase 1.
+- E-6 the binding dialog names the query, the function and the path; a provided file is remembered for the session only; reload asks again.
+- E-7 empty table row, value card, go-to-error link on parse errors, a notice above the grid for lists cut at the display limit.
+- E-8 View differences dialog with the first 200 differing cells (row, column, Excel value, quoin value), an honest introduction and a "same text, different type" note.
+- E-9 `src/app/file-save.js`: picker save with read-back, replace-original dialog, abort handling; download fallback says only that it downloaded. Tested with a stubbed picker.
+- E-10 the round-trip test now also asserts entry order and unchanged index parts on every fixture.
+- E-11 every `QuoinError` code has a two-part message; T-LINT-15 and T-E-11; the status strip shows plain text ("Syntax error") instead of codes; the discard confirmation is an in-page dialog, not `window.confirm`.
+- E-12 F3 and Shift+F3, shortcuts ignored under a dialog except Escape, focus lands on the rail after opening, keyboard-only loop test, sheet lists every shortcut.
+
+### Changed expectations
+- T-E2E-12 final assertion: the clean state is the disabled Download button with the title, not a popover saying "No changes yet." (E-1 asks for a disabled button).
+- `openApp` removes `showSaveFilePicker` so the existing download-event tests keep using the download path; the picker path has its own tests with a stub.
+- T-A11Y-2 starts its Tab walk from the first top-bar control, because focus now starts on the rail after a file opens (E-12).
+- T-B-14 and the overlay test were already adjusted in earlier phases for the disabled Download button.
+- Baselines 05 and 07 were regenerated for the Download label and the plain status text.
+
+### Not reproduced
+- None.
+
+### Blocked
+- Nothing. G-5 was respected: no file under `src/core/m/**` or the binary writers was touched.
+
+### Deviations
+- E-4 test: the plan's euro sign is representable in Windows-1252, so the test uses an arrow (U+2192) as the unencodable character.
+- E-6: the dialog does not offer the workbook's own tables first, and Skip ends a run whose only source is missing with that source's M error (not a cell error); a query with other sources still runs.
+- E-7: the engine stops at the row cap (`m.rows`) and returns no partial table; the message names the stop. The "first N rows" notice therefore applies to lists cut at the display limit.
+- E-8: no "no Excel snapshot" chip; a query with no cached table simply shows no verdict.
+- E-9: the source handle is known only for drops in browsers that provide `getAsFileSystemHandle`; elsewhere the replace-original dialog cannot trigger.
+- E-10: a signed workbook that loses its signature on save gets its `[Content_Types].xml` rewritten and written first.
+
+### Manual checks still to do (need a real browser)
+- `showSaveFilePicker` in Chrome and Edge: save, overwrite the opened file, cancel the picker.
+- Open each saved file in Excel (see `05_TEST_PLAN.md` section 4.2).

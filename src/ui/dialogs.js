@@ -105,7 +105,7 @@ export function bindingDialog(kind, key, queryName) {
       'dialog',
       { 'aria-labelledby': 'bind-title' },
       h('h2', { id: 'bind-title' }, kind === 'web' ? S.bindingTitleWeb : S.bindingTitleFile),
-      h('p', null, S.bindingWants(queryName, key)),
+      h('p', null, S.bindingWants(queryName, kind === 'web' ? 'Web.Contents' : 'File.Contents', key)),
       kind === 'web' ? h('p', { class: 'item-meta' }, S.bindingWebNote) : null,
       input,
       h('div', { class: 'dialog-actions' },

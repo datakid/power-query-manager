@@ -13,7 +13,7 @@ test('T-E-06: a binding is asked for once, remembered for the session, and never
   const dlg = page.locator('dialog[open]');
   await expect(dlg).toBeVisible({ timeout: 15000 });
   await expect(dlg.locator('h2')).toHaveText('Choose a file');
-  await expect(dlg).toContainText('The query Sales reads');
+  await expect(dlg).toContainText('The query Sales calls File.Contents on');
   await expect(dlg).toContainText('sales.csv');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), dlg.getByRole('button', { name: 'Choose a local file' }).click()]);
   await chooser.setFiles(fx('sales.csv'));

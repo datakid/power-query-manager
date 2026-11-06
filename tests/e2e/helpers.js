@@ -12,6 +12,9 @@ export async function openApp(page, path = '/index.html') {
     if (m.type() === 'error' || m.type() === 'warning') problems.push(`${m.type()}: ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+  await page.addInitScript(() => {
+    delete window.showSaveFilePicker;
+  });
   await page.goto(path);
   await page.waitForSelector('.dropzone');
   return problems;
