@@ -258,3 +258,24 @@ export function changesDialog(changes, { onRevertAll }) {
   );
   return openDialog(dlg);
 }
+
+export function differencesDialog({ rows, total, caption }) {
+  const dlg = h(
+    'dialog',
+    { class: 'wide', 'aria-labelledby': 'df-title' },
+    h('h2', { id: 'df-title' }, S.differencesTitle),
+    h('p', { class: 'item-meta' }, S.differencesIntro),
+    h('div', { class: 'diff-scroll' },
+      h('table', { class: 'diff diff-values' },
+        h('caption', { class: 'sr-only' }, caption),
+        h('thead', null, h('tr', null, ...S.differenceColumns.map((c) => h('th', { scope: 'col' }, c)))),
+        h('tbody', null, ...rows.map((r) => h('tr', null,
+          h('td', { class: 'diff-no' }, String(r.row)),
+          h('td', null, r.column),
+          h('td', { class: 'diff-text' }, r.excel),
+          h('td', { class: 'diff-text' }, r.quoin, r.typeOnly ? h('span', { class: 'item-meta' }, ` · ${S.differenceTypeOnly}`) : null)))))),
+    total > rows.length ? h('p', { class: 'item-meta' }, S.differencesShown(rows.length, total)) : null,
+    h('div', { class: 'dialog-actions' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: () => dlg.close() }, S.close))
+  );
+  return openDialog(dlg);
+}

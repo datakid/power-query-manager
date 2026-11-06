@@ -65,3 +65,30 @@ test('T-E-07: a list longer than the display limit says how many rows are shown'
   await expect(page.locator('.result-notice')).toBeVisible();
   await expect(page.locator('.result-notice')).toContainText('Showing the first');
 });
+
+test('T-E-08: the Differences view lists the differing cell with both values', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await item(page, 'RawInput').click();
+  const original = await editor(page).inputValue();
+  await editor(page).fill(original.replace('in\n    #"Renamed Columns"', 'in\n    Table.TransformColumns(#"Renamed Columns", {{"RawInput", each Text.Lower(_)}})'));
+  await runButton(page).click();
+  await expect(page.locator('#status')).toContainText('Differs from the last Excel refresh in 1 cells');
+  await page.getByRole('button', { name: 'View differences' }).click();
+  const dlg = page.locator('dialog[open]');
+  await expect(dlg.locator('h2')).toHaveText('Differences from Excel');
+  await expect(dlg).toContainText('not Excel');
+  await expect(dlg.locator('tbody tr')).toHaveCount(1);
+  await expect(dlg.locator('tbody tr td')).toHaveText(['1', 'RawInput', 'HELLO WORLD!', 'hello world!']);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'View differences' })).toBeFocused();
+});
+
+test('T-E-08: a matching result offers no differences view', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await item(page, 'RawInput').click();
+  await runButton(page).click();
+  await expect(page.locator('#status')).toContainText('Matches the last Excel refresh');
+  await expect(page.getByRole('button', { name: 'View differences' })).toBeHidden();
+});

@@ -1,8 +1,8 @@
 import { h, clear, svgImg } from '../ui/dom.js';
 import { S, fmt, errorMessage } from '../ui/strings.js';
 import { Editor } from '../ui/editor.js';
-import { Grid } from '../ui/grid.js';
-import { popover, bindingDialog } from '../ui/dialogs.js';
+import { Grid, cellDisplay } from '../ui/grid.js';
+import { popover, bindingDialog, differencesDialog } from '../ui/dialogs.js';
 import { parseExpressionText, MParseError } from '../core/m/parser.js';
 import { readTable } from '../core/cells.js';
 import { formatsFor } from '../ui/formats.js';
@@ -91,8 +91,9 @@ export class Workspace {
     this.diffBox = h('input', { type: 'checkbox', id: 'diff-box' });
     this.diffLabel = h('label', { class: 'check item-meta', for: 'diff-box', hidden: true }, this.diffBox, S.highlightDiffs);
     this.diffBox.addEventListener('change', () => this.applyDiffs());
+    this.diffBtn = h('button', { class: 'btn btn-quiet', type: 'button', hidden: true, onclick: () => this.showDifferences() }, S.viewDifferences);
     this.splitter = h('div', { class: 'splitter', role: 'separator', 'aria-orientation': 'horizontal', tabindex: '0', 'aria-label': S.resizeSplit, 'aria-valuemin': '15', 'aria-valuemax': '85', 'aria-valuenow': '45' });
-    this.runbar = h('div', { class: 'runbar' }, this.splitter, this.runBtn, this.cancelBtn, this.steps, h('span', { class: 'spacer' }), this.diffLabel);
+    this.runbar = h('div', { class: 'runbar' }, this.splitter, this.runBtn, this.cancelBtn, this.steps, h('span', { class: 'spacer' }), this.diffLabel, this.diffBtn);
     this.progress = h('div', { class: 'progress', hidden: true, role: 'progressbar', 'aria-label': S.running });
     this.crumbs = h('div', { class: 'crumbs', hidden: true });
     this.capNotice = h('div', { class: 'result-notice', hidden: true });
@@ -428,6 +429,7 @@ export class Workspace {
     this.grid.el.hidden = true;
     this.crumbs.hidden = true;
     this.diffLabel.hidden = true;
+    this.diffBtn.hidden = true;
     clear(this.steps);
     this.setMessage(S.noResultYet, '');
     this.status.set({ run: null, compare: null });
@@ -544,6 +546,7 @@ export class Workspace {
     this.clearMessage();
     clear(this.steps);
     this.diffLabel.hidden = true;
+    this.diffBtn.hidden = true;
     this.crumbs.hidden = true;
     this.drillStack = [];
     this.lastResult = res;
@@ -596,10 +599,36 @@ export class Workspace {
       this.status.set({ run: { rows: t.rowCount, secs }, compare: isStep ? null : res.compare, flags: res.flags });
       this.pendingDiffs = res.compare && res.compare.diffs ? new Set(res.compare.diffs.map(([row, col]) => `${row}:${col}`)) : null;
       this.diffLabel.hidden = !(res.compare && res.compare.count > 0);
+      this.diffBtn.hidden = this.diffLabel.hidden;
       this.diffBox.checked = false;
       return;
     }
     this.showValue(r.value, r.kind, secs, res.flags);
+  }
+
+  async showDifferences() {
+    const compare = this.lastResult && this.lastResult.compare;
+    const cached = this.item ? this.cachedCompare.get(this.item.name) : null;
+    const table = this.lastResult && this.lastResult.result && this.lastResult.result.value;
+    if (!compare || !compare.diffs || !cached || !table) return;
+    const f = formatsFor(this.settings.culture);
+    const shown = compare.diffs.slice(0, 200);
+    const fetched = await Promise.all([...new Set(shown.map(([r]) => r))].map(async (r) => [r, table.rows[r] || (await this.runner.rows(r, 1))[0]]));
+    const byRow = new Map(fetched);
+    const excelText = (c) => {
+      if (c === null || c === undefined) return S.nullText;
+      if (c.t === 'n') return f.number.format(c.v);
+      if (c.t === 'b') return c.v ? S.booleanTrue : S.booleanFalse;
+      return String(c.v);
+    };
+    const rows = shown.map(([r, c]) => {
+      const row = byRow.get(r);
+      const v = row ? row[c] : undefined;
+      const quoin = cellDisplay(v && typeof v === 'object' && v.k === 'error' ? null : v, f.number).text;
+      const excel = excelText(cached.rows[r][c]);
+      return { row: r + 1, column: table.columns[c].name, excel, quoin, typeOnly: excel === quoin };
+    });
+    differencesDialog({ rows, total: compare.count, caption: S.differencesTitle });
   }
 
   markCall(name, message) {
