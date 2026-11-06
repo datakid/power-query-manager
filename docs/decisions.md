@@ -87,3 +87,9 @@ The rail becomes a sheet opened from an Items button in the item header; selecti
 ## 20. One line differ
 
 `src/core/diff.js` holds the longest-common-subsequence matcher that `module-source.js` already used to place hidden `Attribute` lines, now shared with the Changes view and the printed diff. Above four million line pairs the middle of the text is not matched and shows as removed and added; the shared prefix and suffix are always matched.
+
+## 21. Saving
+
+When the browser offers `showSaveFilePicker` the workbook is written through it, read back from the handle and compared byte for byte before the status says it was saved; a mismatch is reported as `write.verify` and nothing is called saved. If the chosen entry is the file that was dropped in (known only when the browser gives a handle for a drop), a dialog asks before the original is replaced. Elsewhere the file goes through an `<a download>` and the status says only that it was downloaded. The feature is detected, never inferred from the user agent.
+
+When a digital signature is removed on save, the rewritten `[Content_Types].xml` is written first and the signature parts and `vbaProject.bin.rels` are dropped; every other entry keeps its position and its original compressed bytes.

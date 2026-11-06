@@ -56,7 +56,7 @@ function pickEdit(s) {
 }
 
 for (const [dir, name] of files) {
-  test(`T-B-06: ${name} saves, re-opens and saves again byte-identically`, async () => {
+  test(`T-B-06 and T-E-10: ${name} saves, re-opens, keeps entry order and index parts, and saves again byte-identically`, async () => {
     const original = new Uint8Array(readFileSync(join(dir, name)));
     const s = await openOrNull(original, name);
     if (!s) return;
@@ -79,6 +79,21 @@ for (const [dir, name] of files) {
 
     const wb = s.wb;
     const out = reopened.wb;
+    const names = (w) => w.pkg.zip.entries.map((e) => e.name);
+    const before = names(wb);
+    const after = names(out);
+    const signatureParts = (n) => /vbaProjectSignature/i.test(n);
+    const removedSignature = before.some(signatureParts) && !after.some(signatureParts);
+    if (removedSignature) {
+      const dropped = (n) => signatureParts(n) || /vbaProject\.bin\.rels$/i.test(n) || n === '[Content_Types].xml';
+      assert.deepEqual(after.filter((n) => n !== '[Content_Types].xml'), before.filter((n) => !dropped(n)), 'other entries keep their order when a signature is removed');
+      assert.equal(after[0], '[Content_Types].xml', 'the rewritten index part comes first');
+    } else assert.deepEqual(after, before, 'ZIP entry order is unchanged');
+    if (!removedSignature) {
+      for (const part of before.filter((n) => n === '[Content_Types].xml' || /\.rels$/i.test(n))) {
+        assert.ok(equalBytes(out.pkg.zip.get(part).rawCompressed(), wb.pkg.zip.get(part).rawCompressed()), `${part} unchanged`);
+      }
+    }
     const allowed = new Set([wb.mashup && wb.mashup.part, wb.connections && wb.connections.part, wb.vba && wb.vba.part, '[Content_Types].xml'].filter(Boolean));
     for (const e of wb.pkg.zip.entries) {
       const o = out.pkg.zip.get(e.name);
