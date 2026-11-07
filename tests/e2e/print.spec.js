@@ -113,3 +113,115 @@ test('T-P-14b: letter portrait gives a letter-sized PDF', async ({ page }) => {
   expect(Math.abs(Number(box[1]) - 612)).toBeLessThan(1.5);
   expect(Math.abs(Number(box[2]) - 792)).toBeLessThan(1.5);
 });
+
+test('T-P-14e: a row count that cannot fit at full size is shrunk and says so, with nothing clipped', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_simple.xlsx'));
+  await runQuery(page, THOUSAND);
+  await openPreview(page);
+  await page.locator('#pp-orient').selectOption('landscape');
+  await page.locator('#pp-rows').fill('60');
+  await expect(page.locator('.print-notes')).toContainText('of their height');
+  await expect.poll(() => pages(page).count()).toBe(17);
+  const overflow = await pages(page).first().evaluate((el) => {
+    const rows = [...el.querySelectorAll('tbody tr')];
+    const last = rows[rows.length - 1].getBoundingClientRect().bottom;
+    const foot = el.querySelector('.print-foot').getBoundingClientRect().top;
+    return last <= foot + 1;
+  });
+  expect(overflow).toBe(true);
+  await page.locator('#pp-rows').fill('10');
+  await expect(page.locator('.print-notes')).not.toContainText('of their height');
+});
+
+test('T-P-11b: printed code keeps true line numbers across wrapped lines and blanks the gutter on continuations', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_simple.xlsx'));
+  await item(page, 'StudentResults').click();
+  await editor(page).fill(`let\n    a = "${'x'.repeat(400)}",\n    b = 1\nin\n    b`);
+  await openPreview(page);
+  await expect(page.locator('#pp-what-code')).toBeChecked();
+  const gutters = await pages(page).first().locator('.pl .pg').allTextContents();
+  expect(gutters[0]).toBe('1');
+  expect(gutters[1]).toBe('2');
+  const blanks = gutters.slice(2).findIndex((g) => g !== '');
+  expect(blanks).toBeGreaterThan(1);
+  expect(gutters.slice(2 + blanks)).toEqual(['3', '4', '5']);
+  await expect(pages(page).first().locator('.pl .tok-kw').first()).toHaveText('let');
+  await expect(pages(page).first().locator('header')).toContainText('StudentResults');
+});
+
+test('T-P-12: changes print as a unified diff with glyphs and numbers from both sides', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await item(page, 'RawInput').click();
+  await editor(page).fill((await editor(page).inputValue()).replace('Source}}', 'Source, 2}}'));
+  await item(page, 'Sheet1').click();
+  await editor(page).fill(`${await editor(page).inputValue()}\n' tail`);
+  await openPreview(page);
+  await page.locator('#pp-what-changes').check();
+  await expect.poll(() => pages(page).count()).toBeGreaterThanOrEqual(2);
+  const first = pages(page).first();
+  await expect(first.locator('.pl.diff-del .pt').first()).toContainText('− ');
+  await expect(first.locator('.pl.diff-add .pt').first()).toContainText('+ ');
+  const nums = await first.locator('.pl.diff-del .pg').allTextContents();
+  expect(nums[0]).toBe('3');
+  expect(nums[1]).toBe('');
+  await expect(first.locator('header')).toContainText('RawInput');
+});
+
+test('T-P-10: printing without the preview prints the code, or the loaded result when there is one', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_simple.xlsx'));
+  await item(page, 'StudentResults').click();
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await expect(page.locator('.print-root.print-temp .pl').first()).toBeAttached();
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await expect(page.locator('.print-root')).toHaveCount(0);
+  await runQuery(page, '#table({"A", "B"}, {{1, "x"}, {2, "y"}})');
+  await page.evaluate(() => window.dispatchEvent(new Event('beforeprint')));
+  await expect(page.locator('.print-root.print-temp .print-table')).toBeAttached();
+  await expect(page.locator('.print-root.print-temp tbody tr')).toHaveCount(2);
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('.print-page').first()).toBeVisible();
+  await expect(page.locator('.topbar')).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await expect(page.locator('.print-root')).toHaveCount(0);
+});
+
+test('T-P-09: the preview is reachable from the keyboard, announces its pages and returns focus on Escape', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_simple.xlsx'));
+  await runQuery(page, THOUSAND);
+  await editor(page).focus();
+  await page.keyboard.press('Control+p');
+  await expect(page.locator('.print-root')).toBeVisible();
+  await expect(page.locator('.print-stack')).toHaveAttribute('role', 'document');
+  await expect(pages(page).first()).toHaveAttribute('aria-label', /^Page 1 of \d+$/);
+  await expect(page.locator('.print-panel')).toHaveAccessibleName('Print settings');
+  await expect(page.locator('.print-panel legend').first()).toBeVisible();
+  const focusInside = await page.evaluate(() => document.querySelector('.print-root').contains(document.activeElement));
+  expect(focusInside).toBe(true);
+  await page.keyboard.press('Tab');
+  const stillInside = await page.evaluate(() => document.querySelector('.print-root').contains(document.activeElement));
+  expect(stillInside).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.print-root')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Print' })).toBeFocused();
+});
+
+test('T-P-04: a very large result asks first, names the row and page counts, and a huge one is refused', async ({ page }) => {
+  await openApp(page);
+  await loadFile(page, ext('pq_simple.xlsx'));
+  await runQuery(page, 'Table.FromColumns({List.Numbers(1, 30000)}, {"N"})');
+  await page.getByRole('button', { name: 'Print' }).click();
+  await expect(page.locator('dialog[open] h2')).toHaveText('Print a large result');
+  await expect(page.locator('dialog[open]')).toContainText('30,000 rows');
+  await page.locator('dialog[open]').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.locator('.print-root')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Print' }).click();
+  await page.locator('dialog[open]').getByRole('button', { name: 'Prepare pages' }).click();
+  await expect(page.locator('.print-root')).toBeVisible();
+  await expect.poll(() => pages(page).count(), { timeout: 60000 }).toBeGreaterThan(300);
+});

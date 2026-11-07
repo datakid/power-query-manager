@@ -98,14 +98,14 @@ function buildView({ app, data, settings, fmt, context, trigger, host }) {
   let tableData = null;
   let loaded = false;
   const stack = h('div', { class: 'print-stack', role: 'document' });
-  const scroll = h('div', { class: 'print-scroll' }, stack);
+  const scroll = h('div', { class: 'print-scroll', tabindex: '0', role: 'region', 'aria-label': S.printPagesAria }, stack);
   const summary = h('p', { class: 'print-summary', id: 'print-summary', 'aria-live': 'polite' });
   const notes = h('ul', { class: 'print-notes' });
   const live = h('div', { class: 'sr-only', role: 'status' });
   const root = h('div', { class: 'print-root', role: 'region', 'aria-label': S.printPreviewAria });
   const panel = h('form', { class: 'print-panel', 'aria-label': S.printSettings });
   panel.addEventListener('submit', (ev) => ev.preventDefault());
-  root.append(scroll, panel, live);
+  root.append(panel, scroll, live);
 
   const hasTable = !!data.table;
   const columnNames = hasTable ? data.table.columns.map((c) => c.name) : [];
@@ -204,6 +204,7 @@ function buildView({ app, data, settings, fmt, context, trigger, host }) {
     for (const t of staticNotes) notes.append(h('li', null, t));
     for (const n of info.overflow) notes.append(h('li', null, S.printNoteOverflow(n)));
     if (info.tooSmall) notes.append(h('li', null, S.printNoteTooSmall));
+    if (info.shrunk < 1) notes.append(h('li', null, S.printNoteShrunk(Math.round(info.shrunk * 100))));
     if (data.refused) notes.append(h('li', null, S.printRefused(fmt.integer.format(data.refused))));
     if (settings.what === 'changes' && data.changes.count === 0) notes.append(h('li', null, S.printChangesNone));
     if (!hasTable && (settings.what === 'result')) notes.append(h('li', null, S.printNoResult));

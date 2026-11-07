@@ -43,6 +43,8 @@
 }
 
 .print-scroll {
+  grid-column: 1;
+  grid-row: 1;
   overflow: auto;
   background: var(--sunk);
   min-width: 0;
@@ -187,6 +189,8 @@
 }
 
 .print-panel {
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
@@ -282,7 +286,12 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
   }
+  .print-scroll,
   .print-panel {
+    grid-column: 1;
+  }
+  .print-panel {
+    grid-row: 2;
     max-height: 45vh;
     border-left: 0;
     border-top: 1px solid var(--line);

@@ -90,6 +90,18 @@ export const STATES = [
       await page.getByRole('button', { name: 'Settings' }).click();
       await expect(page.locator('dialog[open]')).toBeVisible();
     }
+  },
+  {
+    id: '10-print-preview',
+    mask: false,
+    run: async (page) => {
+      await loadFile(page, fx('csv-query.xlsx'));
+      await pick(page, 'StudentResults');
+      await editor(page).fill('Table.FromColumns({List.Numbers(1, 60), List.Transform(List.Numbers(1, 60), each _ * 2.5)}, {"N", "Double"})');
+      await runButton(page).click();
+      await expect(page.locator('.grid-cell:not(.grid-index)').first()).toHaveText('1');
+      await page.getByRole('button', { name: 'Print' }).click();
+      await expect(page.locator('.print-page').first()).toBeVisible();
+    }
   }
 ];
-

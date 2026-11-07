@@ -90,13 +90,21 @@ export function planTable(ctx) {
     pageFooterHeight: settings.foot ? u.foot : 0,
     rowsPerPage: settings.rowsPerPage
   });
+  let shrunk = 1;
+  let tctx = ctx;
+  if (pag.mode === 'fixed') {
+    const need = pag.rowsPerPage + top + bottom;
+    const avail = geo.usableHeight - (settings.head ? u.title : 0) - (settings.foot ? u.foot : 0) - u.head;
+    shrunk = Math.min(1, avail / (need * u.row));
+    if (shrunk < 1) tctx = { ...ctx, u: { ...u, row: Math.max(8, Math.floor(u.row * shrunk)), head: Math.max(20, Math.floor(u.head * shrunk)), sc: u.sc * shrunk } };
+  }
   const builders = [];
   bands.forEach((band, bi) => {
     pag.pages.forEach((p) => {
-      builders.push((n, totalPages) => tablePage({ ctx, cols, band, bi, bands, p, top, bottom, n, totalPages }));
+      builders.push((n, totalPages) => tablePage({ ctx: tctx, cols, band, bi, bands, p, top, bottom, n, totalPages }));
     });
   });
-  return { builders, pag, bands, cols, overflow: bands.filter((b) => b.overflow).map((b) => cols[b.own[0]].name), top, bottom };
+  return { builders, pag, bands, cols, overflow: bands.filter((b) => b.overflow).map((b) => cols[b.own[0]].name), top, bottom, shrunk };
 }
 
 function tableEl(ctx, cols, band, u, widthUnits) {
@@ -261,7 +269,7 @@ export function buildPlan({ settings, data, formats, context }) {
   const u = units(settings.scale);
   const ctx = { settings, geo, u, fmt: formats, table: data.table, fileName: context.fileName, itemName: context.itemName, date: context.date };
   const builders = [];
-  const info = { rowsPerPage: null, mode: null, overflow: [], tooSmall: false, nothing: false };
+  const info = { rowsPerPage: null, mode: null, overflow: [], tooSmall: false, nothing: false, shrunk: 1 };
   const what = settings.what;
   if ((what === 'code' || what === 'both') && data.code.length) {
     const c = planCode(ctx, data.code);
@@ -274,6 +282,7 @@ export function buildPlan({ settings, data, formats, context }) {
     info.rowsPerPage = t.pag.rowsPerPage;
     info.mode = t.pag.mode;
     info.overflow = t.overflow;
+    info.shrunk = t.shrunk;
     info.tooSmall = info.tooSmall || t.pag.tooSmall;
   }
   if (what === 'changes') {

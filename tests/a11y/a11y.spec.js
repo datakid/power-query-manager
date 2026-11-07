@@ -108,3 +108,20 @@ for (const theme of ['light', 'dark']) {
     });
   }
 }
+
+for (const theme of ['light', 'dark']) {
+  test(`T-P-14d: axe is clean on the print preview in the ${theme} theme`, async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: theme, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await openApp(page);
+    await loadFile(page, ext('pq_simple.xlsx'));
+    await item(page, 'StudentResults').click();
+    await editor(page).fill('Table.FromColumns({List.Numbers(1, 200)}, {"N"})');
+    await runButton(page).click();
+    await page.waitForSelector('.grid-cell:not(.grid-index)');
+    await page.getByRole('button', { name: 'Print' }).click();
+    await page.waitForSelector('.print-page');
+    await audit(page, `print preview ${theme}`);
+    await ctx.close();
+  });
+}
