@@ -100,7 +100,11 @@ export const STATES = [
       await editor(page).fill('Table.FromColumns({List.Numbers(1, 60), List.Transform(List.Numbers(1, 60), each _ * 2.5)}, {"N", "Double"})');
       await runButton(page).click();
       await expect(page.locator('.grid-cell:not(.grid-index)').first()).toHaveText('1');
-      await page.getByRole('button', { name: 'Print' }).click();
+      if (await page.locator('.print-button').isVisible()) await page.locator('.print-button').click();
+      else {
+        await page.getByRole('button', { name: 'Export' }).click();
+        await page.getByRole('menuitem', { name: 'Print preview' }).click();
+      }
       await expect(page.locator('.print-page').first()).toBeVisible();
     }
   }

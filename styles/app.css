@@ -842,6 +842,9 @@ dialog h2 {
   .topbar .spacer {
     display: none;
   }
+  .print-button {
+    display: none;
+  }
   .topbar .btn {
     padding: 0 var(--s-3);
   }

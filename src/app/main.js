@@ -143,7 +143,7 @@ export class App {
     this.fileTail = h('span', { class: 'fn-tail' });
     this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() }, this.fileHead, this.fileTail);
     this.fileMeta = h('span', { class: 'file-meta item-meta', hidden: true });
-    this.printBtn = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => this.openPrint() }, S.print);
+    this.printBtn = h('button', { class: 'btn print-button', type: 'button', hidden: true, onclick: () => this.openPrint() }, S.print);
     this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
     this.downloadCount = h('span', { class: 'dl-count' });
@@ -502,6 +502,8 @@ export class App {
       { label: S.exportModule, run: () => this.saveCode(item), disabled: !item || item.type !== 'module' },
       { label: S.exportModules, run: () => this.saveZip('modules'), disabled: !s.modules.length },
       { label: S.exportEverything, run: () => this.saveZip('all'), disabled: !s.queries.length && !s.modules.length },
+      { heading: true, label: S.print },
+      { label: S.printPreviewTitle, run: () => this.openPrint() },
       { heading: true, label: S.exportSettings },
       { check: this.settings.csvGuard, id: 'guard', label: S.csvGuardLabel, onToggle: (v) => {
         this.settings.csvGuard = v;

@@ -30,7 +30,7 @@ None of the manual checks in spec section 14.10 has been run.
 | MX-7 | Not run |
 | MX-8 | Not run |
 | MX-9 | LibreOffice opens an edited workbook (headless conversion succeeds). Not compared visually |
-| MX-10 | Not applicable: print preview is not built |
+| MX-10 | Chromium on Linux: the PDF produced from the preview has the preview's page count and the A4 landscape and Letter portrait media boxes (T-P-14b). Not run: a physical printer, Firefox, WebKit |
 
 ## Behaviour chosen from documentation, not yet observed
 
@@ -53,7 +53,25 @@ Each of these should be confirmed in Excel and then recorded here with the build
 
 ## Known gaps
 
-- Print preview is not built.
+- Print: paper and orientation depend on the `page` property, which is checked in Chromium only.
 - The data model (`xl/model`) is never read.
-- Firefox and WebKit have not been run.
+- Firefox and WebKit have not been run: their browser downloads are blocked in the build sandbox.
 - Locked and DBCS code page projects have no real fixtures; their rules are covered by unit tests with synthetic input only.
+
+## What a browser can and cannot do when printing
+
+Possible, reliably: paper size and orientation through `@page`; forced breaks; keeping an element off a break; repeating a `<thead>` on every page in Chromium, Firefox and WebKit; printing colours when background graphics are on (`print-color-adjust: exact` asks for it, it does not guarantee it).
+
+Not possible from a page, in any browser: reading or setting the printer, tray, duplex or copies; knowing the paper or orientation the user picked in the dialog; a footer row repeated at the bottom of every page; page numbers through CSS margin boxes; knowing the page count before printing; starting the dialog without a user gesture. quoin answers the repeated bottom rows and the page numbers by building the pages itself (decision 22).
+
+## Print matrix (Chromium on Linux, headless)
+
+| Check | Result |
+| --- | --- |
+| Page count matches the preview | 40 of 40 pages at A4 landscape, 20 of 20 at Letter portrait (T-P-14b) |
+| `@page size` honoured | A4 landscape 841.9 by 595.3 pt and Letter 612 by 792 pt media boxes |
+| Repeated bottom rows sit at the bottom of the page | Within 2 px of the foot on the last, short page (T-P-05b) |
+| Repeated header | Real `<thead>`; also drawn by quoin on every page |
+| Background graphics | Requested with `printBackground`; the user's dialog decides in a real browser |
+| Printed on paper | Not run |
+| Firefox and WebKit | Not run |

@@ -147,3 +147,41 @@
 ### Manual checks still to do (need a real browser)
 - `showSaveFilePicker` in Chrome and Edge: save, overwrite the opened file, cancel the picker.
 - Open each saved file in Excel (see `05_TEST_PLAN.md` section 4.2).
+
+## Phase 4 — Printing
+
+### Done
+- P-1 `paginate` and P-2 `bandColumns` in `src/core/print/layout.js` (integers in tenths of a millimetre, paper and margin tables, `pageGeometry`), P-11 `wrapCodeLines` in `src/core/print/code-lines.js`; T-P-01, T-P-02, T-P-05, T-P-11 are unit tests.
+- P-3 `styles/print.css` (twelve named `@page` rules, screen preview and print output share the classes, light-theme colours scoped to `.print-root`), P-4 `src/ui/print-render.js` (pages built 25 at a time, confirmation above 20,000 rows, refusal above 200,000), P-5 repeated header, first rows and last rows (last rows pinned above the foot), P-6 running head and `Page N of M` foot.
+- P-7 `src/ui/print-preview.js` with every control in the plan except fit columns to width; P-8 the honest notes plus overflow, shrink and too-small notes; P-9 tab order (panel, then pages), region and names, Escape returns focus to Print; P-10 `beforeprint` fallback; P-12 printed changes with glyphs and numbers from both sides; P-13 decisions 22 and 23; P-14 T-P-14a to T-P-14e, T-P-05b, T-P-11b, T-P-12, T-P-10, T-P-09, T-P-04.
+- Visual state 10 (print preview): 4 baselines, which completes the 40.
+- The PDF produced from the preview has the preview's page count (40 of 40) and the right media box for A4 landscape and Letter portrait.
+
+### Changed expectations
+- None.
+
+### Not reproduced
+- None.
+
+### Blocked
+- Firefox and WebKit: the browser downloads fail in the sandbox, so no projects were added to `playwright.config.js`.
+- The manual print matrix on a real printer.
+
+### Deviations
+- `styles/print.css` is linked for all media, not `media="print"`, because the preview uses it on screen.
+- Fit columns to width is not offered.
+- A chosen rows-per-page that cannot fit at full height is drawn smaller (with a note) rather than clipped or ignored.
+- On phones the Print button is hidden and the command is in the Export menu.
+- `session` does not store the file name; the preview reads it from the workbook.
+
+## Phase 5 — Hardening and docs
+
+### Done
+- README, decisions 14 and 20 to 23, observations (print matrix, MX-10, known gaps).
+- `npm run build` was re-run; `asset-manifest.json` lists `styles/print.css`, `src/ui/print-render.js`, `src/ui/print-preview.js`, `src/core/print/*.js`, `src/core/diff.js`, `src/app/file-save.js`, the new icons and both marks.
+
+### Blocked
+- Firefox and WebKit runs (see above).
+
+### Not done on purpose
+- Sticky index column in the grid, current-line highlight in the editor, a "no Excel snapshot" chip, workbook tables offered first in the binding dialog.

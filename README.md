@@ -27,7 +27,7 @@ The repository root is not the site root. Hosts that default to a folder named `
 - **Netlify or Cloudflare Pages:** build command `npm run build`, publish directory `dist`. The headers in `_headers` use their format.
 - **Anything else:** send the headers listed in `vercel.json`. Browsers ignore `frame-ancestors` in a meta tag, so it must come from the host.
 
-Remove the old prototype files (`js/`, `vendor/`, and any fonts in `public/fonts/` other than the Atkinson Hyperlegible Next and Commit Mono files). Everything under `public/` is cached by the service worker, so leftovers are downloaded for nothing.
+Everything under `public/` is cached by the service worker. A lint rule fails the build if a font file is not referenced by an `@font-face`, so leftovers cannot ship by accident.
 
 ## Supported files
 
@@ -42,6 +42,13 @@ Results are compared with the table Excel last loaded for that query. Queries th
 ## Editing VBA
 
 VBA is shown and edited, never run. Writing a module drops the compiled p-code and the caches in the project, so Excel recompiles from source on open. A digital signature on the project is removed after you confirm it. A project that is locked for viewing, uses an unsupported code page, or does not parse cleanly is shown read-only.
+
+## Reviewing, saving and printing
+
+- **Changes.** The Download button is disabled until something is edited and then shows the number of changes. *Review changes* lists each changed query or macro with a unified diff and can revert everything after a confirmation.
+- **Saving.** Where the browser has `showSaveFilePicker` the file is written through it, read back and compared byte for byte before quoin says it was saved. Elsewhere it is downloaded and quoin says only that. Macro text that cannot be saved (a character outside the project's code page, a line over 1,023 characters, a typed `Attribute` line) is marked in the editor and blocks the download with the reason.
+- **Printing.** Print opens a preview with paper (A4, A3, Letter, Legal, Tabloid, Executive), orientation, margins, rows per page, scale, repeated header, first rows and last rows, column choice and bands, running head and foot, and a choice of result, code, both, or changes. quoin builds the pages itself, so repeated bottom rows and `Page N of M` work in every browser. What a browser cannot do is in `docs/observations.md`; the decisions are 22 and 23 in `docs/decisions.md`. Use Save as PDF in the print dialog for a PDF.
+- **Keyboard.** Press `?` for the list: open, save, run, print, find, step through matches, and move through the rail.
 
 ## What changes in a downloaded file
 
@@ -59,6 +66,7 @@ npm run test:unit    node --test, no browser needed
 npm run test:lint    no comments, no remote imports, tokens-only CSS, strings rules
 npm run test:browser Playwright (Chromium)
 npm run fixtures     regenerate the synthetic fixtures
+node scripts/make-icons.mjs  regenerate the PNG icons from the SVG sources
 ```
 
 To add a fixture, put the workbook under `tests/fixtures/` and describe where it came from in `tests/fixtures/workbooks/README.md`. Prefer workbooks saved by real Excel.
@@ -67,11 +75,13 @@ To add a fixture, put the workbook under `tests/fixtures/` and describe where it
 
 ```
 index.html, sw.js, manifest.webmanifest, _headers
-src/core        pure logic: zip, xml, opc, cfb, ovba, power query, m engine, exports
+src/core        pure logic: zip, xml, opc, cfb, ovba, power query, m engine, exports, diff, print layout
 src/ui          editor, grid, dialogs, strings
 src/app         session, workspace, runner, main
 src/workers     the M worker
-styles          tokens and component styles
+styles          tokens, component styles and print.css
 tests           unit, e2e, a11y, lint, fixtures
 docs            the spec, decisions, observations, generated M coverage
 ```
+
+Visual baselines live in `tests/__visual__` (Chromium on Linux). After a deliberate change to the look, run `npx playwright test tests/e2e/visual.spec.js --update-snapshots` and look at the new images before committing them.

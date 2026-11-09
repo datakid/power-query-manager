@@ -225,3 +225,40 @@ test('T-P-04: a very large result asks first, names the row and page counts, and
   await expect(page.locator('.print-root')).toBeVisible();
   await expect.poll(() => pages(page).count(), { timeout: 60000 }).toBeGreaterThan(300);
 });
+
+test('T-P-09: on a phone the Print command lives in the Export menu', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openApp(page);
+  await loadFile(page, ext('pq_simple.xlsx'));
+  await expect(page.locator('.print-button')).toBeHidden();
+  await page.getByRole('button', { name: 'Export' }).click();
+  await page.getByRole('menuitem', { name: 'Print preview' }).click();
+  await expect(page.locator('.print-root')).toBeVisible();
+});
+
+test('T-P-15: opening, changing every setting and closing the preview raises no console message and no policy violation', async ({ page }) => {
+  const problems = await openApp(page);
+  await page.evaluate(() => {
+    window.__violations = [];
+    document.addEventListener('securitypolicyviolation', (e) => window.__violations.push(`${e.violatedDirective} ${e.blockedURI}`));
+  });
+  await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await item(page, 'RawInput').click();
+  await runButton(page).click();
+  await expect(page.locator('.grid-cell:not(.grid-index)').first()).toBeVisible();
+  await openPreview(page);
+  await page.locator('#pp-paper').selectOption('legal');
+  await page.locator('#pp-orient').selectOption('landscape');
+  await page.locator('#pp-margins').selectOption('wide');
+  await page.locator('#pp-scale').fill('80');
+  await page.locator('#pp-rep-top').fill('1');
+  await page.locator('#pp-head').uncheck();
+  await page.locator('#pp-foot').uncheck();
+  await page.locator('#pp-what-code').check();
+  await page.locator('#pp-what-changes').check();
+  await page.waitForTimeout(500);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.print-root')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__violations)).toEqual([]);
+  expect(problems).toEqual([]);
+});

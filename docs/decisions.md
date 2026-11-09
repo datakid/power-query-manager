@@ -56,7 +56,7 @@ Table cells can hold lazy values so that one failing cell does not fail the tabl
 
 ## 14. Not built
 
-Print preview and page-break emulation (M5, marked optional in the spec) are not implemented. The lexer fuzz test runs 1,000 seeds of 4 KB and a few seeds of 1 MB, not 1,000 seeds of 1 MB.
+The lexer fuzz test runs 1,000 seeds of 4 KB and a few seeds of 1 MB, not 1,000 seeds of 1 MB.
 
 ## 15. What counts as a change
 
@@ -93,3 +93,22 @@ The rail becomes a sheet opened from an Items button in the item header; selecti
 When the browser offers `showSaveFilePicker` the workbook is written through it, read back from the handle and compared byte for byte before the status says it was saved; a mismatch is reported as `write.verify` and nothing is called saved. If the chosen entry is the file that was dropped in (known only when the browser gives a handle for a drop), a dialog asks before the original is replaced. Elsewhere the file goes through an `<a download>` and the status says only that it was downloaded. The feature is detected, never inferred from the user agent.
 
 When a digital signature is removed on save, the rewritten `[Content_Types].xml` is written first and the signature parts and `vbaProject.bin.rels` are dropped; every other entry keeps its position and its original compressed bytes.
+
+## 22. Printing: we own the pagination
+
+A browser cannot repeat a footer row at the bottom of every printed page, cannot print page numbers (CSS margin boxes are not implemented in any shipping browser), cannot report the page count and cannot read the paper or orientation chosen in the print dialog. quoin therefore builds the pages itself: `src/core/print/layout.js` decides how many rows fit (pure, unit-tested in Node), `src/ui/print-render.js` builds one `.print-page` element per page with its own running head, repeated rows and a `Page N of M` foot, and the browser only has to put each element on one sheet.
+
+- Lengths in the layout are integers in tenths of a millimetre. A page element is 0.5 mm shorter than the sheet so that rounding never pushes a blank page behind it.
+- `@page` cannot read a custom property or a class. Paper and orientation are twelve named pages (`@page a4-landscape { size: A4 landscape; margin: 0 }`) selected through the `page` property on `.print-page`; margins are padding on the page element, so they are exact. A browser that ignores the `page` property prints on the default sheet and the panel says that the print dialog can override the choice.
+- One stylesheet, `styles/print.css`, linked for all media: the preview on screen and the printed output share the same classes.
+- Chosen rows per page win over the fit calculation. When the chosen number cannot fit at full height, the rows of that table are drawn smaller and the panel says by how much; nothing is clipped.
+- Repeated first rows and last rows are taken out of the body and drawn on every page; row numbers stay true. The header is a real `<thead>`.
+- Wide tables are split into column bands, printed band by band, each with the index column and the chosen sticky columns.
+- Code is wrapped in `src/core/print/code-lines.js`; a wrapped continuation has a blank gutter and a hanging indent, so numbers stay true. Printed pages use light-theme colours on white paper whatever the app theme is.
+- Above 20,000 rows the preview asks first and above 200,000 rows it refuses; both limits are in `src/core/limits.js`. Pages are built 25 at a time between animation frames.
+- A print started from the browser menu without the preview (`beforeprint`) prints the open item's code, or its result when every row is already in memory.
+- Fit columns to width is not offered; scale (60 to 140 percent) and column bands cover the same need.
+
+## 23. Not built, so nobody tries it later
+
+No PDF library in the app (the browser's Save as PDF is the supported route and G-6 forbids a dependency); no control over the file name of a printed PDF; no duplex, tray, copies or printer choice; no CSS margin boxes; no replacement for the browser's own headers and footers (the panel tells the user to turn them off).
