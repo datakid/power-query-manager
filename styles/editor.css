@@ -23,9 +23,9 @@
 }
 
 .gutter .gutter-err {
-  color: var(--minium-ink);
+  color: var(--madder-ink);
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--minium);
+  box-shadow: inset 2px 0 0 var(--madder);
 }
 
 .code-area {
@@ -69,12 +69,12 @@
 }
 
 .code-area textarea::selection {
-  background: var(--cobalt-soft);
+  background: var(--slate-soft);
   color: transparent;
 }
 
 .code-area textarea:focus-visible {
-  outline: 2px solid var(--cobalt);
+  outline: 2px solid var(--slate);
   outline-offset: -2px;
 }
 
@@ -109,22 +109,22 @@
 }
 
 .tok-err {
-  text-decoration: underline wavy var(--minium);
+  text-decoration: underline wavy var(--madder);
   text-underline-offset: 3px;
 }
 
 .tok-match {
-  background: var(--sodium-soft);
-  outline: 1px solid var(--sodium);
+  background: var(--ochre-soft);
+  outline: 1px solid var(--ochre);
 }
 
 .tok-find {
-  background: var(--cobalt-soft);
+  background: var(--slate-soft);
 }
 
 .tok-find-current {
-  background: var(--sodium);
-  color: var(--on-sodium);
+  background: var(--celadon);
+  color: var(--on-celadon);
 }
 
 .findbar {

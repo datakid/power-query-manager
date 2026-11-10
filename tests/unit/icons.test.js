@@ -20,14 +20,14 @@ for (const [name, size] of Object.entries(SIZES)) {
 }
 
 for (const name of ['icon-maskable-192.png', 'icon-maskable-512.png']) {
-  test(`T-B-22: ${name} fills every corner and edge midpoint with the ink ground`, () => {
+  test(`T-B-22: ${name} fills every corner and edge midpoint with the readout ground`, () => {
     const img = png(name);
     const last = img.width - 1;
     const mid = Math.floor(img.width / 2);
     for (const [x, y] of [[0, 0], [last, 0], [0, last], [last, last], [mid, 0], [mid, last], [0, mid], [last, mid]]) {
       const p = img.pixel(x, y);
       assert.equal(p.a, 255, `alpha at ${x},${y}`);
-      assert.equal(hex(p), '#111413', `colour at ${x},${y}`);
+      assert.equal(hex(p), '#1E2422', `colour at ${x},${y}`);
     }
   });
 
@@ -39,7 +39,7 @@ for (const name of ['icon-maskable-192.png', 'icon-maskable-512.png']) {
     for (let y = 0; y < img.width; y += 2) {
       for (let x = 0; x < img.width; x += 2) {
         if (Math.hypot(x - c, y - c) <= safe) continue;
-        if (hex(img.pixel(x, y)) !== '#111413') outside++;
+        if (hex(img.pixel(x, y)) !== '#1E2422') outside++;
       }
     }
     assert.equal(outside, 0);
@@ -52,9 +52,9 @@ test('T-B-22: the apple touch icon is opaque and the any icons show the mark', (
   for (const name of ['icon-192.png', 'icon-512.png']) {
     const img = png(name);
     const mid = Math.floor(img.width / 2);
-    let sodium = 0;
-    for (let y = mid; y < img.width; y++) for (let x = mid; x < img.width; x++) if (hex(img.pixel(x, y)) === '#FFC21F') sodium++;
-    assert.ok(sodium > 50, `${name} has a sodium block`);
+    let block = 0;
+    for (let y = mid; y < img.width; y++) for (let x = mid; x < img.width; x++) if (hex(img.pixel(x, y)) === '#4F8C79') block++;
+    assert.ok(block > 50, `${name} has a celadon block`);
   }
 });
 
@@ -86,6 +86,6 @@ for (const name of ['favicon.svg', 'mark.svg', 'mark-dark.svg', 'icon-maskable.s
 
 test('T-I-07: only the favicon carries a style element, and it follows the colour scheme', () => {
   assert.equal(/<style/.test(readFileSync(pub('favicon.svg'), 'utf8')), true);
-  assert.equal(/prefers-color-scheme: dark/.test(readFileSync(pub('favicon.svg'), 'utf8')), true);
+  assert.equal(/prefers-color-scheme:\s*dark/.test(readFileSync(pub('favicon.svg'), 'utf8')), true);
   for (const name of ['mark.svg', 'mark-dark.svg', 'icon-maskable.svg']) assert.equal(/<style/.test(readFileSync(pub(name), 'utf8')), false, name);
 });

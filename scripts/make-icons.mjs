@@ -1,7 +1,7 @@
 import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const GROUND = '#DCE0DA';
+const GROUND = '#E9ECEA';
 const uri = (file) => `data:image/svg+xml;base64,${Buffer.from(readFileSync(file)).toString('base64')}`;
 const mark = uri('public/mark.svg');
 const maskable = uri('public/icon-maskable.svg');

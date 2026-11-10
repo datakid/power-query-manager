@@ -4,6 +4,8 @@ The owner's requirement: real control over printing — rows per page, orientati
 
 Phase order: pure maths (P-1, P-2) → rendering (P-3 … P-6) → UI (P-7 … P-10) → code printing (P-11, P-12) → honesty and verification (P-13, P-14).
 
+**Colour names.** Read `--patina-ink` as `--celadon-ink` and `--minium-ink` as `--madder-ink` (`02A` §5). The on-screen preview UI follows `02B`. The printed page itself follows P-3: black on white, colour only for diff and verdict.
+
 ---
 
 ## 0. What a browser can and cannot do
@@ -11,7 +13,7 @@ Phase order: pure maths (P-1, P-2) → rendering (P-3 … P-6) → UI (P-7 … P
 Write this section into `docs/observations.md` as well, because users will ask.
 
 **Possible, reliably:**
-- Paper size and orientation via `@page { size: A4 landscape; }`.
+- Paper size and orientation via `@page { size: A4 landscape; }` (named page rules switched by a class; see P-3).
 - Margins via `@page { margin: … }`.
 - Forcing a break before/after an element (`break-before: page`).
 - Keeping an element off a break (`break-inside: avoid`).
@@ -82,10 +84,9 @@ A separate stylesheet, linked with `media="print"`, plus a screen-side preview t
 ```
 @page { size: var-driven; margin: 12mm 10mm; }
 ```
-`@page size` cannot read a CSS custom property in any current engine. Write the four combinations as real rules and toggle a class on `<html>`:
-`.p-a4-portrait`, `.p-a4-landscape`, `.p-letter-portrait`, `.p-letter-landscape`, plus A3 and Legal. Six paper sizes × 2 orientations = twelve `@page` rules. That is verbose and correct; do not try to be clever.
+`@page size` cannot read a CSS custom property in any current engine. Write every combination as a real rule and switch between them with a class on `<html>`. `@page` cannot itself be selected by a class, so use **named pages**: twelve rules `@page a4-portrait { size: A4 portrait; }` … and `html.p-a4-portrait .print-page { page: a4-portrait; }`. The paper sizes are the six in P-7 (A4, A3, Letter, Legal, Tabloid, Executive; Tabloid is `11in 17in` and Executive is `7.25in 10.5in`, since neither has a keyword). Six sizes × 2 orientations = twelve named rules. That is verbose and correct; do not try to be clever. The margin presets are written the same way (`normal` 12/10 mm, `narrow` 6/6 mm, `wide` 20/18 mm). The engine support for named pages goes on the manual matrix (`05` §4.1, *`@page size` honoured*).
 
-Rules: `print-color-adjust: exact` on banded rows and chips; hide the rail, top bar, status strip and every control; `break-inside: avoid` on each `.print-page`; `break-after: page` on all but the last; black text on white by default with the palette's `--minium-ink`/`--patina-ink` kept for the diff and verdict colours only. `mm` and `pt` are allowed by T-LINT-3 — use `mm` for page geometry and `pt` for type in print.
+Rules: `print-color-adjust: exact` on banded rows and chips; hide the rail, top bar, status strip and every control; `break-inside: avoid` on each `.print-page`; `break-after: page` on all but the last; black text on white by default with the palette's `--madder-ink`/`--celadon-ink` kept for the diff and verdict colours only. `mm` and `pt` are allowed by T-LINT-3 — use `mm` for page geometry and `pt` for type in print.
 
 ---
 
@@ -117,7 +118,7 @@ Our own, since the browser cannot provide them. Head: workbook file name · quer
 
 **File:** `src/ui/print-preview.js`. A full-screen view (not a dialog — it needs the width), opened from the Print button or `Ctrl/Cmd+P` with `preventDefault` so the browser dialog does not pre-empt it.
 
-Left: a scrollable stack of rendered pages at a fitted zoom, with page numbers. Right: a 280 px settings panel.
+Left: a scrollable stack of rendered pages at a fitted zoom on `--ground`, each page a white sheet with `--shadow-pane` and a page number under it. Right: a 320 px settings panel on `--surface` with `--r-3`, grouped into five `<fieldset>`s (Paper · Rows · Repeat · Columns · Header and footer) with `--s-4` between groups. Orientation and margins are segmented controls (`02B` §4.7). **Every setting below stays visible.** The panel is the one place in the app where nothing is collapsed (`02B` §5).
 
 - Paper: A4, A3, Letter, Legal, Tabloid, Executive.
 - Orientation: portrait / landscape.
@@ -129,7 +130,7 @@ Left: a scrollable stack of rendered pages at a fitted zoom, with page numbers. 
 - Head/foot toggles.
 - What to print: result / code / both / changes.
 
-Every change re-renders the preview immediately, and only the first page synchronously — the rest can lag behind with a skeleton. Bottom of the panel: a live summary, *"12 pages · A4 landscape · 46 rows per page"*. Then Print and Close.
+Every change re-renders the preview immediately, and only the first page synchronously — the rest can lag behind with a skeleton. Bottom of the panel, sticky: a live summary, *"12 pages · A4 landscape · 46 rows per page"*, then **Print** (the one filled button in this layer) and Close (quiet). Below 900 px wide the panel becomes a bottom sheet over the page stack, with a handle that opens it to 85 % height.
 
 Settings live in memory for the tab (G-3), seeded per result from the fit calculation.
 
@@ -193,3 +194,4 @@ Write these down, in `docs/decisions.md`, so they are not attempted later: no PD
 - `T-P-14c` e2e: a 30-column fixture produces the expected band count, and every band repeats the index column.
 - `T-P-14d` axe on the preview.
 - Manual: print one real page on a real printer, A4 and Letter, portrait and landscape; confirm the repeated bottom rows are at the bottom and that nothing is clipped at the margin. Record the result in `05_TEST_PLAN.md` §4.
+

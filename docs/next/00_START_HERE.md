@@ -1,3 +1,33 @@
+# quoin vNext — Start here**.
+
+All five plan files plus new identity assets are written. Here's what you have in `plan/`:
+
+| File | Contents |
+|---|---|
+| `01_AUDIT.md` | **25 items** (H-1, B-01…B-24), each with file, evidence quoted from your source, fix, test ID. Marked `[certain]` (visible in the code you pasted) vs `[verify]` (inferred — reproduce first) |
+| `02_IDENTITY.md` | Name decision, new mark concept + exact geometry, full light/dark token sets, token migration map, 12 component specs, 40-screenshot baseline |
+| `03_EDIT_RUN_SAVE.md` | E-1…E-12: one dirty model, revert, diff, VBA validation, run lifecycle, bindings, result states, Excel compare, real file saving, saved-file contract |
+| `04_PRINT.md` | P-1…P-14, opening with what browsers *cannot* do, then the owning-our-own-pagination decision that makes bottom-repeat rows and page numbers possible |
+| `05_TEST_PLAN.md` | Every test ID in one table, the `pairs.json` contents, 13 fixtures, the saved-file contract, 4 manual matrices |
+| `assets/` | `favicon.svg`, `mark.svg`, `icon-maskable.svg`, `preview.html` |
+
+**The real bugs I found in the code you pasted** (not guesses — quoted in the doc):
+- `suggestedFileName` tests `wb.vba` first, so **`.xltm` templates get saved as `.xlsm`**
+- `h()` drops `aria-expanded: false` entirely — the attribute is never emitted
+- `runner.js` `onerror` never clears `runId` → app stuck in "running" forever after a worker crash
+- `openDialog` removes the dialog on close with no focus return
+- `build-manifest.mjs` doesn't hash `sw.js` → edit the service worker, version unchanged, old cache kept
+- `make-icons.mjs` computes `inner` and never uses it → the maskable icon has no safe zone
+- `contrast.test.js` only matches 6-digit hex; a missing token silently passes
+- `grid.js` has `'abc'`, `'1.2'`, `'true/false'` as literals, bypassing your own T-LINT-9
+
+**On the name:** keep *quoin*. One syllable, says *coin*, means "the dressed cornerstone" — it's true about the product and already gives you the tagline. Renaming costs you the `quoin.theme` key (G-3 forbids a migration, so a rename silently wipes everyone's theme). I wrote the rationale into the doc so it doesn't get re-litigated.
+
+**On the mark:** I threw both drafts out. The new one is **a square ring with its bottom-right corner replaced by a solid sodium block** — every other corner rounded, that one square. Two primitives. It reads as a Q (ring = counter, block = tail) *and* as a cornerstone, and a rounded square with exactly one sharp corner is the kind of anomaly people actually remember. Geometry is pinned to a 64-unit grid so nobody redraws it by eye; the favicon is a separate heavier 32-grid construction so it survives 16px.
+
+Open `plan/assets/preview.html` to judge it at every size in both themes before you commit to it.
+
+**Cost advice:** have Sonnet do Phase 0 + Phase 1 Group A (B-01…B-06) in one session and stop. Those are the six items where a bug destroys a user's file. Phases 2–4 are safe to run later or to abandon half-done.
 # quoin vNext — Start here
 
 This folder is the complete brief for the next version of quoin (repo `datakid/power-query-manager`).
@@ -9,11 +39,16 @@ Read every file in this folder **before writing any code**, in this order:
 |---|------|-----------------|
 | 0 | `00_START_HERE.md` | Mission, global guardrails, phase plan, definition of done |
 | 1 | `01_AUDIT.md` | Every bug and inconsistency found in the current code, with evidence, fix and test |
-| 2 | `02_IDENTITY.md` | The visual overhaul: concept, tokens for both themes, components, the favicon and mark (SVG drawn in full) |
+| 2 | `02_IDENTITY.md` | The visual overhaul: name, mark geometry, component list, verification |
+| 2A | `02A_IDENTITY_AMENDMENT.md` | The Glaze palette: every colour token, both themes; replaces `02` §2 colours |
+| 2B | `02B_VISUAL_REFINEMENT.md` | Shape, spacing, hierarchy, density, disclosure tiers and the control inventory (the no-loss contract); replaces `02`'s component sizes |
 | 3 | `03_EDIT_RUN_SAVE.md` | The core of the app: view → edit → run → save a real file. Quality work only |
 | 4 | `04_PRINT.md` | Printing: rows per page, orientation, paper, repeated rows top/bottom, column bands, code printing |
 | 5 | `05_TEST_PLAN.md` | Every new test ID, the fixtures they need, the manual Excel and browser matrix |
-| — | `assets/` | `favicon.svg`, `mark.svg`, `icon-maskable.svg`, `preview.html` (open it to see the identity) |
+| 6 | `06_WORKBENCH.md` | Phase 6: the workbench for many queries and VBA |
+| — | `assets-v2/` | Glaze `favicon.svg`, `mark.svg`, `icon-maskable.svg`; `refined-preview.html` (+ `-dark`) is the **visual target**; `glaze-preview.html` shows the contrast pairs computed live |
+
+Where two files disagree, the later letter wins for its own subject: `02B` over `02A` over `02` for shape and size, `02A` over `02` for colour. Behaviour, controls and features always come from `03`, `04` and `06`, and `02B` §5 guarantees none of them is dropped.
 
 ---
 
@@ -85,10 +120,10 @@ Order inside the phase: data and file safety first (B-01 … B-06), then interac
 
 **Exit:** every B-item is *Done* or recorded as *Not reproduced*; all new tests T-B-* pass; full suite green.
 
-### Phase 2 — Visual identity (`02_IDENTITY.md`)
-Tokens first (I-1), then the mechanical token migration (I-2), then components (I-3 … I-12), then icons (I-13 … I-15), then the visual baseline (I-16).
+### Phase 2 — Visual identity (`02`, `02A`, `02B` as one phase)
+Tokens first (I-1: `02A` §2 colours plus `02B` §2 shape and size tokens), then the mechanical token migration (I-2, `02A` §5), then components (I-3 … I-12) built to `02B` §4, then icons (I-13 … I-15) from `assets-v2/`, then the polish details (I-18, I-19 from `02A` §6), then the visual baseline (I-16).
 
-**Exit:** contrast unit test green with the new `pairs.json`; screenshots of the 10 reference states (listed in I-16) taken in both themes and at both widths, reviewed and stored as Playwright baselines; full suite green.
+**Exit:** contrast unit test green with the `02A` §7 `pairs.json` plus the `02B` §2 additions; T-I-08, T-I-09 and T-V-01 … T-V-07 green; screenshots of the 10 reference states (listed in I-16) taken in both themes and at both widths, compared with `assets-v2/refined-preview.html`, reviewed and stored as Playwright baselines; full suite green.
 
 ### Phase 3 — Edit, run, save (`03_EDIT_RUN_SAVE.md`, items E-1 … E-12)
 **Exit:** round-trip tests T-E-* green on every fixture; manual checklist items that need a real browser (File System Access) noted in `PROGRESS.md`; full suite green.
@@ -126,11 +161,12 @@ A feature is done only when **all** of these are true. Check them one by one in 
 
 ```
 docs/next/PROGRESS.md                new
-styles/tokens.css                    rewritten (02 I-1)
+styles/tokens.css                    rewritten (02 I-1 with 02A colours, 02B shape tokens)
 styles/app.css, editor.css, grid.css token migration + components (02)
 styles/print.css                     new (04)
-public/favicon.svg, mark.svg         replaced (02 I-13)
-public/icon-maskable.svg             new source for PNG generation (02 I-14)
+public/favicon.svg, mark.svg         replaced from assets-v2 (02 I-13, 02B §7.2)
+public/icon-maskable.svg             new source for PNG generation (02 I-14), from assets-v2
+public/icons.svg                     the in-house icon sprite (02A §6.9)
 public/*.png                         regenerated by scripts/make-icons.mjs (02 I-14)
 scripts/make-icons.mjs               updated (02 I-14)
 index.html, manifest.webmanifest     theme colours, print stylesheet link (02, 04)
@@ -144,5 +180,6 @@ src/ui/print-render.js               new (04)
 src/app/*.js, src/ui/*.js            fixes per item IDs
 tests/unit/*.test.js                 new tests per 05
 tests/e2e/*.spec.js                  new tests per 05
-tests/a11y/pairs.json                rewritten for new tokens (02 I-1)
+tests/a11y/pairs.json                rewritten for new tokens (02A §7, 02B §2)
 ```
+

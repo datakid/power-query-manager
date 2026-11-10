@@ -61,7 +61,20 @@ Rules that do not change: a new test is added in the same commit as the item it 
 | T-I-04 | e2e | 40 visual snapshots (10 states × 2 themes × 2 widths), 0.2 % tolerance |
 | T-I-05 | e2e | focus ring visible on every interactive control (computed outline width > 0) |
 | T-I-06 | e2e | `prefers-reduced-motion: reduce` yields zero non-zero transition durations |
-| T-I-07 | unit | the three SVGs parse, contain no `<script>`, no external reference, no comment |
+| T-I-07 | unit | the three SVGs and `public/icons.svg` parse, contain no `<script>`, no external reference, no comment |
+| T-I-08 | unit | no colour token above OKLCH chroma 0.12 (`02A` §8) |
+| T-I-09 | unit | each icon's ring reaches ≥ 3:1 against its own ground in every colour scheme it declares (`02B` §7.2) |
+| T-LINT-17 / T-V-01 | lint | `border-radius` and control heights use `var(--r-*)` / `var(--h-*)` outside `tokens.css` and `print.css` |
+| T-V-02 | unit | every registered command has a string, a palette entry and ≥ 1 T1–T3 surface; none is hover-only |
+| T-V-03 | e2e | every hover-revealed action is equally visible on `:focus-within` and under touch emulation |
+| T-V-04 | e2e | at most one filled celadon button per layer |
+| T-V-05 | e2e | targets ≥ 24 px desktop, ≥ 44 px for rows and the region switcher on mobile |
+| T-V-06 | e2e | no truncated pane titles at 1280×800; gutters present; no horizontal page overflow |
+| T-V-07 | e2e | every surface in `02B` §5 renders its listed control (the no-loss contract) |
+
+T-V-02 and T-V-07 need the command registry from `06` WB-13. Until Phase 6 they run against a static list in `tests/fixtures/expected/controls.json` that is generated from `02B` §5.
+
+> **Superseded pair list.** The list below is for the sodium palette and is kept only for history. Use the list in `02A` §7, which already includes the `02B` §2 additions. Phase 6 test IDs (T-WB-*, T-LINT-16) and fixtures are in `06_WORKBENCH.md` §5.
 
 **`pairs.json` for the new palette.** Each entry is `[foreground, background, minimum]`. Minimum is 4.5 for body text, 3.0 for ≥ 18.66 px bold or ≥ 24 px text and for non-text boundaries (borders, focus rings, the sodium button's edge).
 
@@ -162,7 +175,10 @@ Automation cannot cover these. Fill the table in and paste it into `docs/observa
 | `<thead>` repeats across printed pages | | | |
 | `@page size` honoured | | | |
 | Background graphics default | | | |
-| Favicon adapts to the OS colour scheme | | | |
+| Favicon adapts to the OS colour scheme; ring visible at 16 px in dark | | | |
+| `F10` / `Shift+F10` reach the app, not the browser menu bar | | | |
+| `Ctrl/Cmd+Shift+1/2`, `Ctrl/Cmd+Alt+F`, `Alt+[`/`]` reach the app | | | |
+| Named `@page` rules switch paper per class | | | |
 | Editor caret aligns with the highlight layer | | | |
 
 ### 4.2 Excel
@@ -198,7 +214,8 @@ One pass with the screen reader available to you (VoiceOver, NVDA or Orca): open
 ## 5. Definition of done for the whole job
 
 - `npm test` green, including every ID above that belongs to a completed phase.
-- 40 visual baselines reviewed by eye, not just stored.
+- 40 visual baselines (plus 32 for Phase 6) reviewed by eye against `plan/assets-v2/refined-preview.html`, not just stored.
 - `docs/next/PROGRESS.md` complete: *Done*, *Changed expectations*, *Not reproduced*, *Blocked*, *Deviations* for all six phases.
 - `README.md`, `docs/decisions.md` and `docs/observations.md` match the code.
 - `npm run build` produces an `asset-manifest.json` with no dead files and a version that changes when any shipped file, including `sw.js`, changes.
+

@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="quoin">
-<rect x="10" y="10" width="44" height="44" rx="14" fill="none" stroke="#E6EAE4" stroke-width="8"/>
-<path d="M42 38H54a4 4 0 0 1 4 4v16H42a4 4 0 0 1-4-4V42a4 4 0 0 1 4-4Z" fill="#FFC21F"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64"><rect x="10" y="10" width="44" height="44" rx="14" fill="none" stroke="#E3E8E5" stroke-width="8"/><path fill="#9CC9B8" d="M42 38H54A4 4 0 0 1 58 42V58H42A4 4 0 0 1 38 54V42A4 4 0 0 1 42 38Z"/></svg>

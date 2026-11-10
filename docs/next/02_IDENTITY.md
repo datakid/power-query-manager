@@ -1,5 +1,7 @@
 # 02 — Identity
 
+> **Amended by `02A_IDENTITY_AMENDMENT.md` and `02B_VISUAL_REFINEMENT.md`.** `02A` replaces the palette in §2 (sodium, cobalt, minium, patina), the token migration in I-2 and the colour of the mark's block with the low-chroma *Glaze* palette. `02B` replaces the radii, the component sizes in §3 (top bar, rail, buttons, readout, editor gutter, grid, dialogs), the upper-case pane labels and the density default, and adds the control inventory. The name, mark geometry, type families, component *list* and verification still come from this file. Read them in order: 02 → 02A → 02B. Where they disagree, the later file wins. Wherever this file says *sodium*, *cobalt*, *minium* or *patina*, read the `02A` §5 mapping.
+
 ## 0. The name
 
 Keep **quoin**. Do not rename. Reasons, so the decision is not re-opened later:
@@ -208,3 +210,4 @@ Store them as Playwright snapshots with a 0.2 % pixel tolerance, fonts preloaded
 - axe reports zero violations on states 1, 3, 5, 8, 9.
 - No raw colour outside `tokens.css` (T-LINT-6 already enforces this).
 - The favicon is legible at 16 px in a real browser tab in both OS schemes — check it, do not assume it.
+

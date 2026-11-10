@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>quoin · Glaze palette and workbench preview</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="glaze-preview.css">
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="10" width="44" height="44" rx="14" fill="none" stroke="currentColor" stroke-width="8"/><path class="blk" d="M42 38H54A4 4 0 0 1 58 42V58H42A4 4 0 0 1 38 54V42A4 4 0 0 1 42 38Z"/></svg>
+    <div>
+      <h1>quoin · Glaze</h1>
+      <p>Low-chroma palette (02A) and the workbench layout (06). Reference only, not app code.</p>
+    </div>
+    <span class="sp"></span>
+    <button class="btn" type="button" id="theme">Switch to dark</button>
+    <button class="btn primary" type="button">Run</button>
+  </header>
+
+  <h2>Accents</h2>
+  <div class="swatches" id="swatches"></div>
+
+  <h2>Workbench, desktop</h2>
+  <section class="wb" aria-label="Workbench mock-up">
+    <div class="top">
+      <span class="wm"><svg viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="10" width="44" height="44" rx="14" fill="none" stroke="currentColor" stroke-width="8"/><path class="blk" fill="var(--celadon-mark)" d="M42 38H54A4 4 0 0 1 58 42V58H42A4 4 0 0 1 38 54V42A4 4 0 0 1 42 38Z"/></svg>quoin</span>
+      <span class="file">Sales model.xlsm · 2.4 MB · xlsm</span>
+      <span class="cmd">Search queries, steps, procedures, commands <span class="kbd">Ctrl K</span></span>
+      <button class="btn" type="button">Changes 3</button>
+      <button class="btn primary" type="button">Run ▾</button>
+    </div>
+    <div class="mid">
+      <div class="pane">
+        <div class="ph">Navigator <span class="sp"></span><span class="pill">Queries 320</span><span class="pill">VBA 60</span></div>
+        <div class="search">sales</div>
+        <div class="chips"><span class="fchip">Edited 3</span><span class="fchip on">Stale 5</span><span class="fchip">Errors 1</span><span class="fchip">Linked to a macro</span></div>
+        <div class="grp"><span>Staging</span><span>12 · 3 stale</span></div>
+        <div class="row"><span class="bead b-ok"></span><span><mark>Sales</mark>_Raw</span><span class="meta">1 240</span></div>
+        <div class="row sel"><span class="bead b-ok"></span><span><mark>Sales</mark>_Clean</span><span class="ed" title="edited"></span><span class="meta">928</span></div>
+        <div class="row"><span class="bead b-stale"></span><span><mark>Sales</mark>_Returns</span><span class="meta">stale</span></div>
+        <div class="grp"><span>Outputs</span><span>8 · 1 error</span></div>
+        <div class="row"><span class="bead b-err"></span><span><mark>Sales</mark>_Summary</span><span class="meta">Expression.Error</span></div>
+        <div class="row"><span class="bead b-run"></span><span><mark>Sales</mark>_by_Region</span><span class="meta">running</span></div>
+        <div class="row"><span class="bead b-never"></span><span><mark>Sales</mark>_Forecast</span><span class="meta">never run</span></div>
+        <div class="grp"><span>Functions</span><span>6</span></div>
+        <div class="row"><span class="bead b-skip"></span><span>fx_<mark>Sales</mark>Year</span><span class="meta">ƒ</span></div>
+      </div>
+      <div class="pane">
+        <div class="tabs"><span class="tab on"><span class="bead b-ok"></span>Sales_Clean<span class="ed"></span></span><span class="tab"><span class="bead b-skip"></span><i>fx_SalesYear</i></span><span class="tab"><span class="bead" style="background:var(--thistle)"></span>Module1</span></div>
+        <div class="code" id="code"></div>
+      </div>
+      <div class="pane">
+        <div class="ph">Applied steps <span class="sp"></span><span class="pill">7</span></div>
+        <div class="step"><span class="bead b-ok"></span><span class="nm">Source</span><span class="d">1 240 rows</span><span class="ms">12 ms</span></div>
+        <div class="step"><span class="bead b-ok"></span><span class="nm">Promoted</span><span class="d">headers</span><span class="ms">2 ms</span></div>
+        <div class="step"><span class="bead b-ok"></span><span class="nm">Changed Type</span><span class="d">3 types</span><span class="ms">6 ms</span></div>
+        <div class="step cur"><span class="bead b-ok"></span><span class="nm">Filtered Rows</span><span class="d neg">−312 rows</span><span class="ms">9 ms</span></div>
+        <div class="step"><span class="bead b-ok"></span><span class="nm">Added Margin</span><span class="d">+1 col</span><span class="ms">8 ms</span></div>
+        <div class="step byp"><span class="bead b-skip"></span><span class="nm">Removed Dupes</span><span class="d">bypassed</span><span class="ms">—</span></div>
+        <div class="step"><span class="bead b-err"></span><span class="nm">Grouped</span><span class="d e">Expression.Error</span><span class="ms">4 ms</span></div>
+        <div class="ph">Dependencies</div>
+        <div class="deps"><b>Depends on</b><b>Used by</b><span><span class="bead b-ok"></span>Sales_Raw</span><span><span class="bead b-err"></span>Sales_Summary</span><span><span class="bead b-skip"></span>fx_SalesYear</span><span><span class="bead b-stale"></span>Sales_Returns</span></div>
+        <div class="impact">Editing this affects 7 queries, 2 loaded to sheets.</div>
+      </div>
+    </div>
+    <div class="dock">
+      <div class="dtabs"><span class="dt on">Result · Filtered Rows</span><span class="dt">Pinned 2</span><span class="dt">Compare</span><span class="dt">Problems 4</span><span class="dt">Queue</span><span class="dt">Graph</span><span class="info"><span class="vchip">View filter: Region = North · Add as a step</span>928 rows · 6 cols · step 4 of 7<span class="okchip">matches Excel</span></span></div>
+      <table>
+        <thead><tr><th class="i">#</th><th>Region<small>text</small></th><th>Date<small>date</small></th><th>Amount<small>number</small></th><th>Margin<small>number</small></th><th>Channel<small>text</small></th></tr></thead>
+        <tbody>
+          <tr><td class="i">1</td><td>North</td><td>2024-01-03</td><td class="n">1 204.00</td><td class="null">null</td><td>Retail</td></tr>
+          <tr><td class="i">2</td><td>North</td><td>2024-01-04</td><td class="n">880.50</td><td class="n">0.21</td><td>Online</td></tr>
+          <tr><td class="i">3</td><td>North</td><td>2024-01-04</td><td class="n">96.10</td><td class="err">DataFormat.Error</td><td>Retail</td></tr>
+          <tr><td class="i">4</td><td>North</td><td>2024-01-05</td><td class="n">2 310.00</td><td class="n">0.34</td><td>Wholesale</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="readout"><span>Ran Sales_Clean · 7 steps · 41 ms</span><span class="sp"></span><span class="c"><span class="bead b-err"></span>Problems 4</span><span class="c"><span class="bead" style="background:var(--ochre)"></span>Edited 3</span><span class="c"><span class="bead b-stale"></span>Stale 5</span><span class="dim">en-US</span></div>
+  </section>
+
+  <h2>Contrast pairs, computed live for the current theme</h2>
+  <p class="note">Each pair is foreground on background with its target. A red ratio means the token must be adjusted on the ink side before Phase 2 is accepted.</p>
+  <div class="pairs" id="pairs"></div>
+</main>
+<script src="glaze-preview.js"></script>
+</body>
+</html>

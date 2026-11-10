@@ -28,7 +28,7 @@ textarea {
 }
 
 :focus-visible {
-  outline: 2px solid var(--cobalt);
+  outline: 2px solid var(--slate);
   outline-offset: 2px;
 }
 
@@ -151,14 +151,14 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--sodium);
-  border-color: transparent;
-  color: var(--on-sodium);
+  background: var(--celadon);
+  border-color: var(--celadon-edge);
+  color: var(--on-celadon);
   font-weight: 600;
 }
 
 .btn-primary:hover {
-  background: var(--sodium-hover);
+  background: var(--celadon-hover);
 }
 
 .btn-quiet {
@@ -260,7 +260,7 @@ textarea {
   bottom: 22%;
   width: 3px;
   border-radius: var(--r-pill);
-  background: var(--marker);
+  background: var(--slate);
 }
 
 .tree-item .name {
@@ -279,7 +279,7 @@ textarea {
 
 .badge-fn {
   font-family: var(--font-code);
-  color: var(--cobalt-ink);
+  color: var(--slate-ink);
 }
 
 .dot-conn {
@@ -302,13 +302,13 @@ textarea {
   width: 6px;
   height: 6px;
   border-radius: var(--r-pill);
-  background: var(--sodium);
+  background: var(--ochre);
   flex: none;
 }
 
 .tree-edited {
   font-size: var(--t-xs);
-  color: var(--sodium-ink);
+  color: var(--ochre-ink);
 }
 
 .rail-toggle,
@@ -395,7 +395,7 @@ textarea {
 .info-strip {
   padding: var(--s-2) var(--s-4);
   color: var(--ink-2);
-  background: var(--cobalt-soft);
+  background: var(--slate-soft);
   font-size: var(--t-sm);
 }
 
@@ -451,7 +451,7 @@ textarea {
   display: block;
   width: 30%;
   height: 100%;
-  background: var(--cobalt);
+  background: var(--slate);
   animation: slide 1.2s var(--ease) infinite;
 }
 
@@ -482,7 +482,7 @@ textarea {
 .crumbs button {
   background: none;
   border: 0;
-  color: var(--cobalt-ink);
+  color: var(--slate-ink);
   cursor: pointer;
   padding: 0;
 }
@@ -496,13 +496,13 @@ textarea {
 }
 
 .message.error {
-  background: var(--minium-soft);
-  color: var(--minium-ink);
+  background: var(--madder-soft);
+  color: var(--madder-ink);
 }
 
 .message.warn {
-  background: var(--sodium-soft);
-  color: var(--sodium-ink);
+  background: var(--ochre-soft);
+  color: var(--ochre-ink);
 }
 
 .message pre {
@@ -539,12 +539,22 @@ textarea {
 }
 
 .status-alert {
-  color: var(--readout-alert);
+  color: var(--on-readout);
   white-space: nowrap;
 }
 
 .status-alert:empty {
   display: none;
+}
+
+.status-alert::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--s-2);
+  border-radius: var(--r-pill);
+  background: var(--madder);
 }
 
 .chip {
@@ -557,13 +567,13 @@ textarea {
 }
 
 .chip.ok {
-  background: var(--patina-soft);
-  color: var(--patina-ink);
+  background: var(--celadon-soft);
+  color: var(--celadon-ink);
 }
 
 .chip.diff {
-  background: var(--minium-soft);
-  color: var(--minium-ink);
+  background: var(--madder-soft);
+  color: var(--madder-ink);
 }
 
 .status-dot {
@@ -575,11 +585,11 @@ textarea {
 }
 
 .status-dot.ok {
-  background: var(--patina);
+  background: var(--celadon-ink);
 }
 
 .status-dot.diff {
-  background: var(--minium);
+  background: var(--madder);
 }
 
 .empty {
@@ -625,8 +635,8 @@ textarea {
 
 .dropzone.is-over {
   border-style: solid;
-  border-color: var(--sodium);
-  background: var(--sodium-soft);
+  border-color: var(--celadon-edge);
+  background: var(--celadon-soft);
 }
 
 .footnote {
@@ -676,7 +686,7 @@ textarea {
 
 .menu-item:hover,
 .menu-item:focus-visible {
-  background: var(--cobalt-soft);
+  background: var(--slate-soft);
 }
 
 .menu-item[disabled],
@@ -702,8 +712,8 @@ textarea {
 }
 
 .popover .warn {
-  background: var(--sodium-soft);
-  color: var(--sodium-ink);
+  background: var(--ochre-soft);
+  color: var(--ochre-ink);
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
 }
@@ -1007,19 +1017,19 @@ dialog.wide {
 }
 
 .diff-add {
-  background: var(--patina-soft);
+  background: var(--celadon-soft);
 }
 
 .diff-add .diff-mark {
-  color: var(--patina-ink);
+  color: var(--celadon-ink);
 }
 
 .diff-del {
-  background: var(--minium-soft);
+  background: var(--madder-soft);
 }
 
 .diff-del .diff-mark {
-  color: var(--minium-ink);
+  color: var(--madder-ink);
 }
 
 .diff-gap td {
@@ -1036,14 +1046,14 @@ dialog.wide {
 }
 
 .info-strip.problem {
-  background: var(--minium-soft);
-  color: var(--minium-ink);
+  background: var(--madder-soft);
+  color: var(--madder-ink);
 }
 
 .result-notice {
   padding: var(--s-2) var(--s-4);
-  background: var(--sodium-soft);
-  color: var(--sodium-ink);
+  background: var(--ochre-soft);
+  color: var(--ochre-ink);
   border-bottom: 1px solid var(--line);
   font-size: var(--t-sm);
 }

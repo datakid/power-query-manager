@@ -171,11 +171,11 @@
 }
 
 .pl.diff-add {
-  background: var(--patina-soft);
+  background: var(--celadon-soft);
 }
 
 .pl.diff-del {
-  background: var(--minium-soft);
+  background: var(--madder-soft);
 }
 
 .pl.diff-gap {

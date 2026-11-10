@@ -9,7 +9,7 @@
 }
 
 .grid:focus-visible {
-  outline: 2px solid var(--cobalt);
+  outline: 2px solid var(--slate);
   outline-offset: -2px;
 }
 
@@ -90,13 +90,13 @@
 }
 
 .grid-cell.err {
-  color: var(--minium-ink);
-  background: var(--minium-soft);
+  color: var(--madder-ink);
+  background: var(--madder-soft);
   cursor: pointer;
 }
 
 .grid-cell.nested {
-  color: var(--cobalt-ink);
+  color: var(--slate-ink);
   cursor: pointer;
 }
 
@@ -106,15 +106,15 @@
 
 .grid-row:hover .grid-cell.err,
 .grid-cell.diff {
-  background: var(--minium-soft);
+  background: var(--madder-soft);
 }
 
 .grid-cell.sel {
-  background: var(--cobalt-soft);
+  background: var(--slate-soft);
 }
 
 .grid-cell.active {
-  outline: 2px solid var(--cobalt);
+  outline: 2px solid var(--slate);
   outline-offset: -2px;
   border-radius: var(--r-sm);
 }

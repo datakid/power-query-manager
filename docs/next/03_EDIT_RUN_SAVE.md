@@ -4,6 +4,8 @@ This is the product. Everything else is support. Twelve items, each finished to 
 
 The loop the user is in: **open → see → change → run → compare → save → open in Excel and it is still their file.**
 
+**Colour names.** This file was written before the Glaze palette. Read `--patina*` as `--celadon-ink` / `--celadon-soft` and `--minium*` as `--madder-ink` / `--madder-soft` (`02A` §5). Where a control is placed (top bar, menu, palette) is decided by `02B` §5. This file decides what the control does.
+
 ---
 
 ## E-1 — One honest dirty model
@@ -18,7 +20,9 @@ isDirty() -> count > 0
 ```
 `changes()` is computed, never cached, and uses `normalizeQueryText` for M and exact comparison for VBA (B-03). Everything that needs to know — the Download button's enabled state, its tooltip, the rail dots, the beforeunload guard (B-05), the Revert buttons — reads it.
 
-**States:** clean (Download disabled, tooltip `S.downloadNone`), dirty (Download enabled, label shows the count: *"Download — 2 changes"*), saving (button busy, disabled, status says what is happening), saved (status says the file name written, verdict chip `--patina`).
+**States:** clean (Download disabled, tooltip `S.downloadNone`), dirty (Download enabled, label shows the count: *"Download — 2 changes"*), saving (button busy, disabled, status says what is happening), saved (status says the file name written, verdict chip `--celadon-ink` on `--celadon-soft`).
+
+**Placement (`02B` §4.1, §5).** The top bar's **Changes N** split-button carries the count and opens the Changes review. Its menu holds *Review changes*, *Save a copy…* and *Download*. `Ctrl/Cmd+S` saves directly. Disabled and clean states keep the tooltip above.
 
 **Test:** `T-E-01` e2e: edit, revert by hand to the original text (including a trailing newline), assert the app is clean again.
 
@@ -38,7 +42,7 @@ Reverting must restore the **original** text exactly, not a re-serialised versio
 
 **Build:** `src/core/diff.js`, pure, no DOM: a line-level diff (longest common subsequence on lines — `module-source.js` already contains an LCS; extract and share it rather than writing a second one, and note that in `docs/decisions.md`). Export `diffLines(a, b) -> [{ kind: 'same'|'add'|'del', a?, b?, text }]`.
 
-**UI:** a Changes dialog from the Download button's split menu listing every changed item, each expandable to a unified diff with `--patina-soft` additions and `--minium-soft` deletions, line numbers from both sides. It is read-only. This is also what gets printed by P-12.
+**UI:** a Changes dialog from the Download button's split menu listing every changed item, each expandable to a unified diff with `--celadon-soft` additions and `--madder-soft` deletions, plus `+` / `−` glyphs in the gutter so colour is never the only signal, line numbers from both sides. It is read-only. This is also what gets printed by P-12.
 
 **Test:** `T-E-03` unit on the differ (empty, identical, all-new, interleaved, CRLF vs LF); `T-E-03b` e2e asserting the dialog lists exactly the changed items.
 
@@ -93,7 +97,7 @@ Row cap: when `rowCap` truncates, say it above the grid — *"Showing the first 
 
 ## E-8 — Compare with what Excel loaded
 
-The snapshot comparison already exists (`compare/cache-compare.js`). Make its verdict unmissable and specific: a chip in the status strip with one of *matches Excel*, *differs from Excel (N cells)*, *no Excel snapshot*, and a Differences view that lists the first 200 differing cells as `row, column, Excel value, quoin value`. The chip colour is `--patina` / `--minium` / `--ink-3`.
+The snapshot comparison already exists (`compare/cache-compare.js`). Make its verdict unmissable and specific: a chip in the status strip with one of *matches Excel*, *differs from Excel (N cells)*, *no Excel snapshot*, and a Differences view that lists the first 200 differing cells as `row, column, Excel value, quoin value`. The chip colour is `--celadon-ink` on `--celadon-soft` / `--madder-ink` on `--madder-soft` / `--ink-3` on `--track`, each with a glyph (check, cross, dash).
 
 Be honest in the copy: quoin's engine is not Excel's. A difference is information, not a failure. The message for a type-only difference says so.
 
@@ -134,8 +138,9 @@ Audit every `throw new QuoinError(` in `src/core/**` and make sure each code has
 
 ## E-12 — The keyboard runs the whole app
 
-`?` opens the shortcut sheet (it already exists — make it complete and correct). Required: `Ctrl/Cmd+O` open, `Ctrl/Cmd+S` save, `Ctrl/Cmd+Enter` run, `Escape` cancel a run or close the top layer, `Ctrl/Cmd+F` find in editor, `F3`/`Shift+F3` next/previous match, `Alt+Up`/`Alt+Down` previous/next item in the rail, `Ctrl/Cmd+P` print preview (Phase 4), `Ctrl/Cmd+Z`/`Shift+Ctrl/Cmd+Z` the textarea's native undo (do not reimplement it).
+`?` opens the shortcut sheet when focus is not in a text field or the editor (it already exists — make it complete and correct, and generate it from the command registry once `06` WB-13 exists). Required: `Ctrl/Cmd+O` open, `Ctrl/Cmd+S` save, `Ctrl/Cmd+Enter` run, `Escape` cancel a run or close the top layer, `Ctrl/Cmd+F` find in editor, `F3`/`Shift+F3` next/previous match, `Alt+Up`/`Alt+Down` previous/next item in the rail, `Ctrl/Cmd+P` print preview (Phase 4), `Ctrl/Cmd+Z`/`Shift+Ctrl/Cmd+Z` the textarea's native undo (do not reimplement it).
 
-Shortcuts are suppressed while a dialog is open except Escape. `Ctrl/Cmd+S` must `preventDefault` so the browser's own save dialog never appears.
+Shortcuts are suppressed while a dialog is open except Escape. `Ctrl/Cmd+S` must `preventDefault` so the browser's own save dialog never appears. Match `Alt` combinations on `event.code`, not `event.key` (macOS turns `Alt`+letter into a character). Never bind the reserved combinations listed in `02B` §7.1.
 
 **Test:** `T-E-12` e2e: perform open → select → edit → run → save entirely from the keyboard, asserting focus is never on `<body>` after any step.
+

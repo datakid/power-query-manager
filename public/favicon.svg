@@ -1,8 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="quoin">
-<style>
-:root { --fg: #111413; }
-@media (prefers-color-scheme: dark) { :root { --fg: #E6EAE4; } }
-</style>
-<rect x="5" y="5" width="22" height="22" rx="7" fill="none" stroke="var(--fg)" stroke-width="5"/>
-<path d="M21 19h6.5a2 2 0 0 1 2 2v8.5H21a2 2 0 0 1-2-2V21a2 2 0 0 1 2-2Z" fill="#FFC21F"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><style>.r{stroke:#1A201E}.b{fill:#4F8C79}@media (prefers-color-scheme:dark){.r{stroke:#E3E8E5}.b{fill:#9CC9B8}}</style><rect class="r" x="5" y="5" width="22" height="22" rx="7" fill="none" stroke-width="5"/><path class="b" d="M21 19H27.5A2 2 0 0 1 29.5 21V29.5H21A2 2 0 0 1 19 27.5V21A2 2 0 0 1 21 19Z"/></svg>
