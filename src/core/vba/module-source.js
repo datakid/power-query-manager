@@ -1,4 +1,6 @@
-const ATTRIBUTE_LINE = /^\s*Attribute\s+\S/i;
+import { lcsMap } from '../diff.js';
+
+export const ATTRIBUTE_LINE = /^\s*Attribute\s+\S/i;
 
 export function splitLines(text) {
   return text.split(/\r\n|\r|\n/);
@@ -22,38 +24,6 @@ export function splitModuleSource(text) {
     else visible.push(line);
   }
   return { eol, visible: visible.join('\n'), visibleLines: visible, hidden };
-}
-
-function lcsMap(a, b) {
-  let pre = 0;
-  while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
-  let suf = 0;
-  while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
-  const map = new Array(a.length).fill(-1);
-  for (let i = 0; i < pre; i++) map[i] = i;
-  for (let i = 0; i < suf; i++) map[a.length - 1 - i] = b.length - 1 - i;
-  const am = a.slice(pre, a.length - suf);
-  const bm = b.slice(pre, b.length - suf);
-  if (am.length && bm.length && am.length * bm.length <= 4000000) {
-    const w = bm.length + 1;
-    const dp = new Uint32Array((am.length + 1) * w);
-    for (let i = am.length - 1; i >= 0; i--) {
-      for (let j = bm.length - 1; j >= 0; j--) {
-        dp[i * w + j] = am[i] === bm[j] ? dp[(i + 1) * w + j + 1] + 1 : Math.max(dp[(i + 1) * w + j], dp[i * w + j + 1]);
-      }
-    }
-    let i = 0;
-    let j = 0;
-    while (i < am.length && j < bm.length) {
-      if (am[i] === bm[j]) {
-        map[pre + i] = pre + j;
-        i++;
-        j++;
-      } else if (dp[(i + 1) * w + j] >= dp[i * w + j + 1]) i++;
-      else j++;
-    }
-  }
-  return map;
 }
 
 export function joinModuleSource(model, editedVisible) {

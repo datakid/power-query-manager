@@ -75,9 +75,8 @@ test('T-E2E-5 and T-E2E-12: edit, run, differ, download, reopen, revert', async 
   await item(page, 'RawInput').click();
   await page.getByRole('button', { name: 'Revert' }).click();
   await expect(page.locator('[data-name=RawInput] .dot-edited')).toHaveCount(0);
-  await downloadButton(page).click();
-  await expect(page.locator('.popover')).toContainText('No changes yet.');
-  await expect(page.locator('.popover .btn-primary')).toBeDisabled();
+  await expect(downloadButton(page)).toHaveAttribute('aria-disabled', 'true');
+  await expect(downloadButton(page)).toHaveAttribute('title', 'No changes yet.');
 });
 
 test('T-E2E-6: a VBA module edit survives download, and the export keeps the attribute lines', async ({ page }) => {
@@ -265,6 +264,7 @@ test('T-E2E-17: the mobile layout offers a code and result switch and still down
   const page = await ctx.newPage();
   await openApp(page);
   await loadFile(page, ext('pq_vba_complex.xlsm'));
+  await page.getByRole('button', { name: 'Items' }).tap();
   await item(page, 'RawInput').tap();
   await expect(page.locator('.segmented')).toBeVisible();
   await page.getByRole('button', { name: 'Result', exact: true }).tap();

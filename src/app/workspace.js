@@ -1,13 +1,12 @@
 import { h, clear, svgImg } from '../ui/dom.js';
 import { S, fmt, errorMessage } from '../ui/strings.js';
 import { Editor } from '../ui/editor.js';
-import { Grid } from '../ui/grid.js';
-import { popover, bindingDialog } from '../ui/dialogs.js';
+import { Grid, cellDisplay } from '../ui/grid.js';
+import { popover, bindingDialog, differencesDialog } from '../ui/dialogs.js';
 import { parseExpressionText, MParseError } from '../core/m/parser.js';
 import { readTable } from '../core/cells.js';
+import { formatsFor } from '../ui/formats.js';
 import { Runner } from './runner.js';
-
-const plural = (n, one, many) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
 
 function loadLabel(load) {
   if (load.kind === 'table') return `${S.loadedToTable} · ${load.sheet}!${load.ref}${load.alsoModel ? ` · ${S.loadedToModel}` : ''}`;
@@ -22,9 +21,16 @@ export class Workspace {
     this.status = status;
     this.runner = new Runner();
     this.item = null;
-    this.rail = h('nav', { class: 'rail', 'aria-label': S.queries });
+    this.rail = h('nav', { class: 'rail', id: 'rail', 'aria-label': S.itemsAria });
+    this.railOpen = false;
     this.main = h('section', { class: 'main', 'data-pane': 'code' });
-    this.root = h('div', { class: 'workspace' }, this.rail, this.main);
+    this.root = h('div', { class: 'workspace', 'data-rail': 'closed' }, this.rail, this.main);
+    this.rail.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && this.railOpen) {
+        ev.stopPropagation();
+        this.setRailOpen(false, true);
+      }
+    });
     host.append(this.root);
     this.buildMain();
     this.drillStack = [];
@@ -73,28 +79,31 @@ export class Workspace {
     this.title = h('h2', { class: 'item-title' });
     this.meta = h('span', { class: 'item-meta' });
     this.revertBtn = h('button', { class: 'btn btn-quiet', type: 'button', hidden: true, onclick: () => this.revert() }, S.revert);
-    this.head = h('div', { class: 'item-head' }, h('div', null, this.title), h('div', { class: 'item-actions' }, this.meta, this.revertBtn));
+    this.railToggle = h('button', { class: 'btn btn-quiet rail-toggle', type: 'button', 'aria-controls': 'rail', 'aria-expanded': false, onclick: () => this.setRailOpen(!this.railOpen, false) }, S.items);
+    this.head = h('div', { class: 'item-head' }, h('div', { class: 'item-title-row' }, this.railToggle, this.title), h('div', { class: 'item-actions' }, this.meta, this.revertBtn));
     this.info = h('div', { class: 'info-strip', hidden: true });
     this.editorHost = h('div', { class: 'editor-host' });
     this.editorHost.style.display = 'contents';
     this.editor = new Editor(this.editorHost, { language: 'm', label: S.editorAria, onChange: (t) => this.onEditorChange(t) });
-    this.runBtn = h('button', { class: 'btn', type: 'button', onclick: () => this.run() }, S.run, h('span', { class: 'item-meta' }, '⌘↵'));
+    this.runBtn = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => this.run() }, S.run, h('span', { class: 'item-meta' }, '⌘↵'));
     this.cancelBtn = h('button', { class: 'btn', type: 'button', hidden: true, onclick: () => this.cancel() }, S.cancel);
     this.steps = h('div', { class: 'steps', role: 'group', 'aria-label': S.stepsLabel });
     this.diffBox = h('input', { type: 'checkbox', id: 'diff-box' });
     this.diffLabel = h('label', { class: 'check item-meta', for: 'diff-box', hidden: true }, this.diffBox, S.highlightDiffs);
     this.diffBox.addEventListener('change', () => this.applyDiffs());
+    this.diffBtn = h('button', { class: 'btn btn-quiet', type: 'button', hidden: true, onclick: () => this.showDifferences() }, S.viewDifferences);
     this.splitter = h('div', { class: 'splitter', role: 'separator', 'aria-orientation': 'horizontal', tabindex: '0', 'aria-label': S.resizeSplit, 'aria-valuemin': '15', 'aria-valuemax': '85', 'aria-valuenow': '45' });
-    this.runbar = h('div', { class: 'runbar' }, this.splitter, this.runBtn, this.cancelBtn, this.steps, h('span', { class: 'spacer' }), this.diffLabel);
+    this.runbar = h('div', { class: 'runbar' }, this.splitter, this.runBtn, this.cancelBtn, this.steps, h('span', { class: 'spacer' }), this.diffLabel, this.diffBtn);
     this.progress = h('div', { class: 'progress', hidden: true, role: 'progressbar', 'aria-label': S.running });
     this.crumbs = h('div', { class: 'crumbs', hidden: true });
+    this.capNotice = h('div', { class: 'result-notice', hidden: true });
     this.resultBody = h('div', { class: 'result-body' });
     this.resultBody.style.display = 'flex';
     this.resultBody.style.flexDirection = 'column';
     this.resultBody.style.flex = '1';
     this.resultBody.style.minHeight = '0';
     this.sources = h('div', { class: 'crumbs', hidden: true });
-    this.resultPanel = h('div', { class: 'result-panel' }, this.progress, this.crumbs, this.resultBody, this.sources);
+    this.resultPanel = h('div', { class: 'result-panel' }, this.progress, this.crumbs, this.capNotice, this.resultBody, this.sources);
     this.segmented = h('div', { class: 'segmented', role: 'group', 'aria-label': S.pane },
       h('button', { type: 'button', 'aria-pressed': 'true', onclick: () => this.setPane('code') }, S.code),
       h('button', { type: 'button', 'aria-pressed': 'false', onclick: () => this.setPane('result') }, S.result));
@@ -104,6 +113,18 @@ export class Workspace {
     this.grid.el.hidden = true;
     this.messageEl = null;
     this.splitterSetup();
+  }
+
+  setRailOpen(open, returnFocus) {
+    this.railOpen = open;
+    this.root.dataset.rail = open ? 'open' : 'closed';
+    this.railToggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const stop = this.rail.querySelector('[role="treeitem"][tabindex="0"]');
+      if (stop) stop.focus();
+    } else if (returnFocus || this.rail.contains(document.activeElement)) {
+      this.railToggle.focus();
+    }
   }
 
   setPane(p) {
@@ -163,7 +184,7 @@ export class Workspace {
           isFn ? h('span', { class: 'badge-fn', 'aria-hidden': 'true' }, S.functionBadge) : null,
           isFn ? h('span', { class: 'sr-only' }, S.asFunction) : null,
           edited ? h('span', { class: 'dot-edited', 'aria-hidden': 'true' }) : null,
-          edited ? h('span', { class: 'sr-only' }, S.asEdited) : null));
+          edited ? h('span', { class: 'tree-edited' }, S.editedMark) : null));
       li.addEventListener('click', () => this.select(item));
       li.addEventListener('keydown', (ev) => this.railKey(ev, li));
       if (extra) extra(li);
@@ -183,6 +204,9 @@ export class Workspace {
         const sub = h('ul', { role: 'group' });
         const folder = h('li', { role: 'treeitem', 'aria-expanded': 'true', class: 'tree-folder', tabindex: '-1', 'aria-label': S.folderAria(g) },
           h('span', { class: 'tree-item' }, h('span', { class: 'name' }, g)), sub);
+        folder.addEventListener('keydown', (ev) => {
+          if (ev.target === folder) this.railKey(ev, folder);
+        });
         folder.firstChild.addEventListener('click', () => {
           const open = folder.getAttribute('aria-expanded') !== 'true';
           folder.setAttribute('aria-expanded', String(open));
@@ -197,6 +221,43 @@ export class Workspace {
     for (const m of s.modules) tree.append(mk({ type: 'module', name: m.name }));
     if (!s.modules.length) tree.append(h('li', { role: 'presentation', class: 'item-meta rail-label' }, S.noMacros));
     this.rail.append(tree, keep);
+    this.syncRailSelection();
+  }
+
+  railItems() {
+    return [...this.rail.querySelectorAll('[role="treeitem"]')];
+  }
+
+  focusRail() {
+    const stop = this.rail.querySelector('[role="treeitem"][tabindex="0"]');
+    if (stop && stop.offsetParent !== null) stop.focus();
+    else this.runBtn.focus();
+  }
+
+  syncRailSelection() {
+    const all = this.railItems();
+    let stop = null;
+    for (const li of all) {
+      if (!li.dataset.name) continue;
+      const on = !!this.item && li.dataset.type === this.item.type && li.dataset.name === this.item.name;
+      li.setAttribute('aria-selected', String(on));
+      if (on) stop = li;
+    }
+    if (!stop) stop = all[0] || null;
+    for (const li of all) li.tabIndex = li === stop ? 0 : -1;
+  }
+
+  markEdited(item) {
+    const li = this.rail.querySelector(`[data-type="${item.type}"][data-name="${CSS.escape(item.name)}"] .tree-item`);
+    if (!li) return;
+    const edited = this.session.isEdited(item);
+    const dot = li.querySelector('.dot-edited');
+    if (edited && !dot) li.append(h('span', { class: 'dot-edited', 'aria-hidden': 'true' }), h('span', { class: 'tree-edited' }, S.editedMark));
+    else if (!edited && dot) {
+      dot.remove();
+      const label = li.querySelector('.tree-edited');
+      if (label) label.remove();
+    }
   }
 
   isFunction(q) {
@@ -213,18 +274,35 @@ export class Workspace {
   }
 
   railKey(ev, li) {
-    const all = [...this.rail.querySelectorAll('[role="treeitem"]')].filter((x) => x.offsetParent !== null);
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const all = this.railItems().filter((x) => x.offsetParent !== null);
     const i = all.indexOf(li);
-    if (ev.key === 'ArrowDown') {
-      if (all[i + 1]) all[i + 1].focus();
-      ev.preventDefault();
-    } else if (ev.key === 'ArrowUp') {
-      if (all[i - 1]) all[i - 1].focus();
-      ev.preventDefault();
-    } else if (ev.key === 'Enter' || ev.key === ' ') {
-      li.click();
-      ev.preventDefault();
-    }
+    const go = (j) => {
+      const target = all[Math.max(0, Math.min(all.length - 1, j))];
+      if (!target) return;
+      target.focus();
+      if (target.dataset.name) target.click();
+    };
+    if (ev.key === 'ArrowDown') go(i + 1);
+    else if (ev.key === 'ArrowUp') go(i - 1);
+    else if (ev.key === 'Home') go(0);
+    else if (ev.key === 'End') go(all.length - 1);
+    else if (ev.key === 'Enter' || ev.key === ' ') (li.dataset.name ? li : li.firstChild).click();
+    else if (ev.key.length === 1 && /\S/.test(ev.key)) {
+      const key = ev.key.toLowerCase();
+      const names = all.map((x) => (x.dataset.name || x.textContent || '').trim().toLowerCase());
+      let found = -1;
+      for (let k = 1; k <= all.length; k++) {
+        const j = (i + k) % all.length;
+        if (names[j].startsWith(key)) {
+          found = j;
+          break;
+        }
+      }
+      if (found < 0) return;
+      go(found);
+    } else return;
+    ev.preventDefault();
   }
 
   step(dir) {
@@ -251,7 +329,8 @@ export class Workspace {
     this.cancel();
     this.item = item;
     this.drillStack = [];
-    this.renderRail();
+    this.syncRailSelection();
+    if (this.railOpen) this.setRailOpen(false, false);
     const s = this.session;
     const isQuery = item.type === 'query';
     this.main.classList.toggle('is-vba', !isQuery);
@@ -266,6 +345,7 @@ export class Workspace {
     const ed = isQuery ? s.queryEditable() : s.moduleEditable(item.name);
     this.editor.setReadOnly(!ed.editable);
     this.info.hidden = false;
+    this.info.classList.remove('problem');
     clear(this.info);
     if (!isQuery) {
       this.info.append(S.vbaInfo);
@@ -278,6 +358,7 @@ export class Workspace {
       this.meta.textContent = loadLabel(s.query(item.name).load);
     }
     this.revertBtn.hidden = !s.isEdited(item);
+    if (!isQuery && s.isEdited(item)) this.checkModule(s.textOf(item));
     this.clearResult();
     if (isQuery) this.checkLive(this.editor.getText());
     this.setPane('code');
@@ -288,17 +369,28 @@ export class Workspace {
     const s = this.session;
     s.setText(this.item, text);
     this.revertBtn.hidden = !s.isEdited(this.item);
-    const li = this.rail.querySelector(`[data-type="${this.item.type}"][data-name="${CSS.escape(this.item.name)}"] .tree-item`);
-    if (li) {
-      const dot = li.querySelector('.dot-edited');
-      if (s.isEdited(this.item) && !dot) li.append(h('span', { class: 'dot-edited', 'aria-hidden': 'true' }));
-      else if (!s.isEdited(this.item) && dot) dot.remove();
-    }
-    if (this.item.type === 'query') {
-      clearTimeout(this.liveTimer);
-      this.liveTimer = setTimeout(() => this.checkLive(text), 250);
-    }
+    this.markEdited(this.item);
+    clearTimeout(this.liveTimer);
+    if (this.item.type === 'query') this.liveTimer = setTimeout(() => this.checkLive(text), 250);
+    else this.liveTimer = setTimeout(() => this.checkModule(text), 300);
     for (const fn of this.onEditCallbacks) fn();
+  }
+
+  checkModule(text) {
+    if (!this.item || this.item.type !== 'module') return;
+    const problems = this.session.validateModule(this.item.name, text);
+    clear(this.info);
+    if (!problems.length) {
+      this.editor.setError(null);
+      this.info.classList.remove('problem');
+      this.info.append(S.vbaInfo);
+      return;
+    }
+    const p = problems[0];
+    const message = errorMessage(p.code, p);
+    this.editor.setError({ message, line: p.line, col: p.col, start: p.start, end: p.end });
+    this.info.classList.add('problem');
+    this.info.append(message);
   }
 
   checkLive(text) {
@@ -316,8 +408,20 @@ export class Workspace {
     this.session.revert(this.item);
     this.editor.setText(this.session.textOf(this.item));
     this.revertBtn.hidden = true;
-    this.renderRail();
+    this.markEdited(this.item);
     if (this.item.type === 'query') this.checkLive(this.editor.getText());
+    for (const fn of this.onEditCallbacks) fn();
+  }
+
+  revertAll() {
+    const names = [...this.session.queryEdits.keys()].map((name) => ({ type: 'query', name })).concat([...this.session.moduleEdits.keys()].map((name) => ({ type: 'module', name })));
+    for (const it of names) this.session.revert(it);
+    for (const it of names) this.markEdited(it);
+    if (this.item) {
+      this.editor.setText(this.session.textOf(this.item));
+      this.revertBtn.hidden = true;
+      if (this.item.type === 'query') this.checkLive(this.editor.getText());
+    }
     for (const fn of this.onEditCallbacks) fn();
   }
 
@@ -325,6 +429,7 @@ export class Workspace {
     this.grid.el.hidden = true;
     this.crumbs.hidden = true;
     this.diffLabel.hidden = true;
+    this.diffBtn.hidden = true;
     clear(this.steps);
     this.setMessage(S.noResultYet, '');
     this.status.set({ run: null, compare: null });
@@ -339,10 +444,20 @@ export class Workspace {
   }
 
   clearMessage() {
+    this.capNotice.hidden = true;
     if (this.messageEl) {
       this.messageEl.remove();
       this.messageEl = null;
     }
+  }
+
+  setRunning(on) {
+    const active = document.activeElement;
+    this.progress.hidden = !on;
+    this.runBtn.hidden = on;
+    this.cancelBtn.hidden = !on;
+    if (on && active === this.runBtn) this.cancelBtn.focus();
+    else if (!on && active === this.cancelBtn) this.runBtn.focus();
   }
 
   async run(step) {
@@ -356,14 +471,13 @@ export class Workspace {
     } catch (e) {
       if (e instanceof MParseError) {
         this.setMessage(S.lineCol(e.message, e.line, e.col), 'error');
+        this.messageEl.append(h('button', { class: 'btn btn-quiet', type: 'button', onclick: () => this.editor.goto(e.line, e.col) }, S.goToError));
         this.status.set({ run: { error: 'm.parse' }, compare: null });
         return;
       }
       throw e;
     }
-    this.progress.hidden = false;
-    this.runBtn.hidden = true;
-    this.cancelBtn.hidden = false;
+    this.setRunning(true);
     const q = s.query(item.name);
     let compareTo = null;
     if (!step && q.load.kind === 'table') {
@@ -390,14 +504,12 @@ export class Workspace {
       localOffsetMin: -new Date().getTimezoneOffset()
     }, { onNeedBinding: (kind, key) => this.askBinding(kind, key) });
     if (token !== this.runToken) return;
-    this.progress.hidden = true;
-    this.runBtn.hidden = false;
-    this.cancelBtn.hidden = true;
+    this.setRunning(false);
     this.renderResult(res, !!step);
   }
 
   async askBinding(kind, key) {
-    const file = await bindingDialog(kind, key);
+    const file = await bindingDialog(kind, key, this.item ? this.item.name : '');
     if (!file) return null;
     const b = await this.session.addBinding(key, file);
     this.renderSources();
@@ -422,9 +534,7 @@ export class Workspace {
     if (this.runner.running) {
       this.runToken++;
       this.runner.cancel();
-      this.progress.hidden = true;
-      this.runBtn.hidden = false;
-      this.cancelBtn.hidden = true;
+      this.setRunning(false);
       this.setMessage(S.cancelled, '');
       this.status.set({ run: { cancelled: true }, compare: null });
       return true;
@@ -436,6 +546,7 @@ export class Workspace {
     this.clearMessage();
     clear(this.steps);
     this.diffLabel.hidden = true;
+    this.diffBtn.hidden = true;
     this.crumbs.hidden = true;
     this.drillStack = [];
     this.lastResult = res;
@@ -451,6 +562,7 @@ export class Workspace {
     if (res.status === 'parse-error') {
       const e = res.error;
       this.setMessage(`${S.lineCol(e.message, e.line, e.col)}${e.member && e.member !== this.item.name ? S.inMember(e.member) : ''}`, 'error');
+      if (!e.member || e.member === this.item.name) this.messageEl.append(h('button', { class: 'btn btn-quiet', type: 'button', onclick: () => this.editor.goto(e.line, e.col) }, S.goToError));
       this.status.set({ run: { error: 'm.parse' }, compare: null });
       return;
     }
@@ -464,7 +576,7 @@ export class Workspace {
     }
     if (res.status === 'stopped') {
       const key = res.code;
-      const text = key === 'm.timeout' ? fmt(errorMessage(key), { s: this.settings.timeoutS }) : key === 'm.rows' ? fmt(errorMessage(key), { n: ((res.detail && res.detail.rows) || this.settings.rowCap).toLocaleString('en-US') }) : errorMessage(key);
+      const text = key === 'm.timeout' ? fmt(errorMessage(key), { s: this.settings.timeoutS }) : key === 'm.rows' ? fmt(errorMessage(key), { n: formatsFor(this.settings.culture).integer.format((res.detail && res.detail.rows) || this.settings.rowCap) }) : errorMessage(key);
       this.setMessage(text, 'warn');
       this.status.set({ run: { error: key }, compare: null });
       return;
@@ -487,10 +599,36 @@ export class Workspace {
       this.status.set({ run: { rows: t.rowCount, secs }, compare: isStep ? null : res.compare, flags: res.flags });
       this.pendingDiffs = res.compare && res.compare.diffs ? new Set(res.compare.diffs.map(([row, col]) => `${row}:${col}`)) : null;
       this.diffLabel.hidden = !(res.compare && res.compare.count > 0);
+      this.diffBtn.hidden = this.diffLabel.hidden;
       this.diffBox.checked = false;
       return;
     }
     this.showValue(r.value, r.kind, secs, res.flags);
+  }
+
+  async showDifferences() {
+    const compare = this.lastResult && this.lastResult.compare;
+    const cached = this.item ? this.cachedCompare.get(this.item.name) : null;
+    const table = this.lastResult && this.lastResult.result && this.lastResult.result.value;
+    if (!compare || !compare.diffs || !cached || !table) return;
+    const f = formatsFor(this.settings.culture);
+    const shown = compare.diffs.slice(0, 200);
+    const fetched = await Promise.all([...new Set(shown.map(([r]) => r))].map(async (r) => [r, table.rows[r] || (await this.runner.rows(r, 1))[0]]));
+    const byRow = new Map(fetched);
+    const excelText = (c) => {
+      if (c === null || c === undefined) return S.nullText;
+      if (c.t === 'n') return f.number.format(c.v);
+      if (c.t === 'b') return c.v ? S.booleanTrue : S.booleanFalse;
+      return String(c.v);
+    };
+    const rows = shown.map(([r, c]) => {
+      const row = byRow.get(r);
+      const v = row ? row[c] : undefined;
+      const quoin = cellDisplay(v && typeof v === 'object' && v.k === 'error' ? null : v, f.number).text;
+      const excel = excelText(cached.rows[r][c]);
+      return { row: r + 1, column: table.columns[c].name, excel, quoin, typeOnly: excel === quoin };
+    });
+    differencesDialog({ rows, total: compare.count, caption: S.differencesTitle });
   }
 
   markCall(name, message) {
@@ -503,12 +641,18 @@ export class Workspace {
     this.editor.setError({ message, line, col, start: at, end: at + name.length });
   }
 
+  applyCulture() {
+    this.grid.setCulture(this.settings.culture);
+    this.grid.rerender();
+  }
+
   showTable(t, remote) {
     this.clearMessage();
     this.grid.el.hidden = false;
     this.grid.setCulture(this.settings.culture);
     this.grid.setData({ columns: t.columns, rowCount: t.rowCount, rows: t.rows, loader: remote && t.rowCount > t.rows.length ? (start, count) => this.runner.rows(start, count) : null });
-    if (t.truncated && !remote) this.status.set({ note: S.resultsTruncated });
+    this.capNotice.hidden = !t.truncated;
+    this.capNotice.textContent = t.truncated ? S.rowCapShown(formatsFor(this.settings.culture).integer.format(t.rows.length)) : '';
     this.grid.el.setAttribute('aria-label', S.resultAria(this.item ? this.item.name : ''));
   }
 
@@ -526,7 +670,7 @@ export class Workspace {
       return;
     }
     const text = v === null ? S.nullText : typeof v === 'object' ? v.text || v.special || kind : String(v);
-    this.setMessage(text, '');
+    this.setMessage(text, 'value');
     this.status.set({ run: { value: true, secs }, compare: null, flags });
   }
 
@@ -590,4 +734,4 @@ export class Workspace {
   }
 }
 
-export { svgImg, plural };
+export { svgImg };

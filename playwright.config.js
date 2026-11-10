@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: 'tests',
   testMatch: ['e2e/**/*.spec.js', 'a11y/**/*.spec.js'],
   timeout: 60000,
+  snapshotPathTemplate: '{testDir}/__visual__/{arg}{ext}',
   workers: 1,
   reporter: [['list']],
   use: { baseURL: 'http://localhost:5173', viewport: { width: 1280, height: 800 }, acceptDownloads: true },

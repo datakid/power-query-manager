@@ -17,7 +17,7 @@ for (const r of roots) walk(r);
 files.sort();
 
 const hash = createHash('sha256');
-for (const f of files) hash.update(f).update(readFileSync(f));
+for (const f of [...files, 'sw.js']) hash.update(f).update(readFileSync(f));
 const version = hash.digest('hex').slice(0, 16);
 const manifest = `${JSON.stringify({ version, files: ['./', ...files] }, null, 2)}\n`;
 writeFileSync('asset-manifest.json', manifest);

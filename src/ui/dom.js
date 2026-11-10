@@ -1,8 +1,15 @@
+const STATE_ATTR = /^(aria-|contenteditable$|draggable$|spellcheck$)/;
+
 export function h(tag, attrs, ...children) {
   const el = document.createElement(tag);
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
-      if (v === undefined || v === null || v === false) continue;
+      if (v === undefined || v === null) continue;
+      if (typeof v === 'boolean' && STATE_ATTR.test(k)) {
+        el.setAttribute(k, String(v));
+        continue;
+      }
+      if (v === false) continue;
       if (k === 'class') el.className = v;
       else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
       else if (k === 'text') el.textContent = v;
@@ -47,8 +54,17 @@ export function onOutside(el, handler) {
 export function placeBelow(floating, anchor, align = 'left') {
   const r = anchor.getBoundingClientRect();
   floating.style.top = `${Math.round(r.bottom + 4)}px`;
+  floating.style.left = '0px';
   document.body.append(floating);
   const w = floating.offsetWidth;
+  const hgt = floating.offsetHeight;
+  const margin = 8;
+  let top = r.bottom + 4;
+  if (top + hgt > window.innerHeight - margin) {
+    const above = r.top - 4 - hgt;
+    top = above >= margin ? above : Math.max(margin, window.innerHeight - margin - hgt);
+  }
   const left = align === 'right' ? r.right - w : r.left;
-  floating.style.left = `${Math.max(8, Math.min(Math.round(left), window.innerWidth - w - 8))}px`;
+  floating.style.top = `${Math.round(top)}px`;
+  floating.style.left = `${Math.max(margin, Math.min(Math.round(left), window.innerWidth - w - margin))}px`;
 }

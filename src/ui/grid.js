@@ -1,5 +1,6 @@
 import { h, clear, placeBelow, onOutside } from './dom.js';
 import { S } from './strings.js';
+import { formatsFor } from './formats.js';
 
 const ROW_H = 28;
 const HEAD_H = 44;
@@ -10,18 +11,18 @@ const SORT_LIMIT = 200000;
 
 export function typeLabel(col) {
   const t = String(col.type || 'any').replace(/^nullable /, '');
-  if (col.facet && ['int64', 'int32', 'int16', 'int8', 'byte'].includes(col.facet)) return '123';
-  if (t === 'text') return 'abc';
-  if (t === 'number') return '1.2';
-  if (t === 'logical') return 'true/false';
+  if (col.facet && ['int64', 'int32', 'int16', 'int8', 'byte'].includes(col.facet)) return S.typeInteger;
+  if (t === 'text') return S.typeText;
+  if (t === 'number') return S.typeNumber;
+  if (t === 'logical') return S.typeLogical;
   return t;
 }
 
 export function cellDisplay(v, numberFormat) {
   if (v === null || v === undefined) return { text: S.nullText, cls: 'null' };
-  if (typeof v === 'string') return { text: v.replace(/\r?\n|\r/g, ' ↵ '), cls: '', raw: v };
+  if (typeof v === 'string') return { text: v.replace(/\r?\n|\r/g, S.newlineGlyph), cls: '', raw: v };
   if (typeof v === 'number') return { text: numberFormat.format(v), cls: 'num', raw: String(v) };
-  if (typeof v === 'boolean') return { text: v ? 'true' : 'false', cls: '' };
+  if (typeof v === 'boolean') return { text: v ? S.booleanTrue : S.booleanFalse, cls: '' };
   switch (v.k) {
     case 'number':
       return { text: v.special, cls: 'num' };
@@ -86,7 +87,8 @@ export class Grid {
     this.active = null;
     this.drag = false;
     this.loader = null;
-    this.numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 15, useGrouping: false });
+    this.numberFormat = formatsFor('en-US').number;
+    this.integerFormat = formatsFor('en-US').integer;
     this.head = h('div', { class: 'grid-head', role: 'row' });
     this.body = h('div', { class: 'grid-body', role: 'rowgroup' });
     this.sizer = h('div', { class: 'grid-sizer' }, this.head, this.body);
@@ -102,11 +104,14 @@ export class Grid {
   }
 
   setCulture(name) {
-    try {
-      this.numberFormat = new Intl.NumberFormat(name, { maximumFractionDigits: 15, useGrouping: false });
-    } catch {
-      this.numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 15, useGrouping: false });
-    }
+    const f = formatsFor(name);
+    this.numberFormat = f.number;
+    this.integerFormat = f.integer;
+  }
+
+  rerender() {
+    if (!this.columns.length) return;
+    this.repaintAll();
   }
 
   setData({ columns, rowCount, rows = null, loader = null, diffs = null }) {
@@ -131,14 +136,16 @@ export class Grid {
     this.el.setAttribute('aria-rowcount', String(rowCount + 1));
     this.el.setAttribute('aria-colcount', String(columns.length + 1));
     this.sizer.style.width = `${this.totalWidth}px`;
-    this.sizer.style.height = `${HEAD_H + rowCount * ROW_H}px`;
+    const shown = rowCount === 0 ? 1 : rowCount;
+    this.sizer.style.height = `${HEAD_H + shown * ROW_H}px`;
     this.head.style.width = `${this.totalWidth}px`;
     this.head.style.height = `${HEAD_H}px`;
     this.body.style.top = `${HEAD_H}px`;
-    this.body.style.height = `${rowCount * ROW_H}px`;
+    this.body.style.height = `${shown * ROW_H}px`;
     this.el.scrollTop = 0;
     this.el.scrollLeft = 0;
     clear(this.body);
+    if (rowCount === 0) this.body.append(h('div', { class: 'grid-empty', role: 'row', 'aria-rowindex': '2' }, h('div', { role: 'gridcell', 'aria-colspan': String(columns.length + 1) }, S.emptyTable)));
     this.rowEls = new Map();
     this.headSig = '';
     this.paint();
@@ -280,6 +287,7 @@ export class Grid {
       if (this.isSelected(i, c)) classes.push('sel');
       if (this.active && this.active.r === i && this.active.c === c) classes.push('active');
       const attrs = { class: classes.join(' '), role: 'gridcell', id: `gc-${i}-${c}`, 'aria-colindex': String(c + 2) };
+      if (this.isSelected(i, c)) attrs['aria-selected'] = 'true';
       if (d.raw !== undefined && d.raw !== d.text) attrs.title = d.raw;
       if (diff) attrs.title = S.cellDiffTitle;
       const cell = h('div', attrs, d.text);
@@ -339,9 +347,20 @@ export class Grid {
     for (let r = this.sel.r1; r <= Math.min(this.sel.r2, this.sel.r1 + 20000); r += PAGE) this.rowAt(r);
   }
 
+  activateActive() {
+    const { r, c } = this.active;
+    const idx = this.order ? this.order[r] : r;
+    const row = this.cache.get(idx);
+    const v = row ? row[c] : undefined;
+    if (!v || typeof v !== 'object') return;
+    if (v.k === 'error') this.showError(v, this.el.querySelector(`#gc-${r}-${c}`) || this.el);
+    else if (['list', 'record', 'table'].includes(v.k) && this.onDrill) this.onDrill(v, S.drillLabel(this.columns[c].name, r + 1));
+  }
+
   onKey(ev) {
+    const navKeys = ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageDown', 'PageUp'];
     if (!this.active) {
-      if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(ev.key) && this.rowCount && this.columns.length) {
+      if (navKeys.includes(ev.key) && this.rowCount && this.columns.length) {
         this.active = { r: 0, c: 0 };
         this.anchor = { r: 0, c: 0 };
         this.sel = { r1: 0, r2: 0, c1: 0, c2: 0 };
@@ -350,11 +369,29 @@ export class Grid {
       }
       return;
     }
-    const d = { ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], PageDown: [Math.floor(this.el.clientHeight / ROW_H), 0], PageUp: [-Math.floor(this.el.clientHeight / ROW_H), 0], Home: [0, -Infinity], End: [0, Infinity] }[ev.key];
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      this.activateActive();
+      return;
+    }
+    const corner = ev.ctrlKey || ev.metaKey;
+    const rows = this.rowCount;
+    const cols = this.columns.length;
+    const page = Math.max(1, Math.floor(this.el.clientHeight / ROW_H));
+    const d = {
+      ArrowDown: [1, 0],
+      ArrowUp: [-1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+      PageDown: [page, 0],
+      PageUp: [-page, 0],
+      Home: corner ? [-rows, -cols] : [0, -cols],
+      End: corner ? [rows, cols] : [0, cols]
+    }[ev.key];
     if (!d) return;
     ev.preventDefault();
-    const r = Math.max(0, Math.min(this.rowCount - 1, this.active.r + d[0]));
-    const c = Math.max(0, Math.min(this.columns.length - 1, this.active.c + (Number.isFinite(d[1]) ? d[1] : d[1] < 0 ? -this.columns.length : this.columns.length)));
+    const r = Math.max(0, Math.min(rows - 1, this.active.r + d[0]));
+    const c = Math.max(0, Math.min(cols - 1, this.active.c + d[1]));
     if (ev.shiftKey) this.extend(r, c);
     else {
       this.active = { r, c };
@@ -401,11 +438,17 @@ export class Grid {
   openColumnMenu(c, anchor) {
     this.closeMenu();
     const col = this.columns[c];
-    const item = (label, fn, disabled) => h('button', { class: 'menu-item', type: 'button', role: 'menuitem', disabled: disabled ? true : null, onclick: () => {
+    const tooLarge = this.rowCount > SORT_LIMIT;
+    const item = (label, fn, blocked) => h('button', { class: 'menu-item', type: 'button', role: 'menuitem', 'aria-disabled': blocked ? true : null, onclick: () => {
+      if (blocked) return;
       this.closeMenu();
       fn();
     } }, label);
-    const menu = h('div', { class: 'menu', role: 'menu' }, item(S.sortAscending, () => this.sortBy(c, 1)), item(S.sortDescending, () => this.sortBy(c, -1)), item(S.copyColumnName, () => navigator.clipboard && navigator.clipboard.writeText(col.name)));
+    const menu = h('div', { class: 'menu', role: 'menu' },
+      item(S.sortAscending, () => this.sortBy(c, 1), tooLarge),
+      item(S.sortDescending, () => this.sortBy(c, -1), tooLarge),
+      tooLarge ? h('div', { class: 'menu-label', role: 'presentation' }, S.sortTooLarge(this.integerFormat.format(this.rowCount))) : null,
+      item(S.copyColumnName, () => navigator.clipboard && navigator.clipboard.writeText(col.name)));
     placeBelow(menu, anchor);
     this.menu = menu;
     this.menuOff = onOutside(menu, () => this.closeMenu());
@@ -432,7 +475,7 @@ export class Grid {
 
   async sortBy(c, dir) {
     if (this.rowCount > SORT_LIMIT) {
-      if (this.onNotice) this.onNotice(S.sortLimit);
+      if (this.onNotice) this.onNotice(S.sortTooLarge(this.integerFormat.format(this.rowCount)));
       return;
     }
     if (this.loader) {

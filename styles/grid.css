@@ -9,7 +9,7 @@
 }
 
 .grid:focus-visible {
-  outline: 2px solid var(--heather);
+  outline: 2px solid var(--cobalt);
   outline-offset: -2px;
 }
 
@@ -90,25 +90,31 @@
 }
 
 .grid-cell.err {
-  color: var(--clay-ink);
+  color: var(--minium-ink);
+  background: var(--minium-soft);
   cursor: pointer;
 }
 
 .grid-cell.nested {
-  color: var(--tide-ink);
+  color: var(--cobalt-ink);
   cursor: pointer;
 }
 
+.grid-row:hover .grid-cell:not(.grid-index) {
+  background: var(--surface);
+}
+
+.grid-row:hover .grid-cell.err,
 .grid-cell.diff {
-  background: var(--clay-soft);
+  background: var(--minium-soft);
 }
 
 .grid-cell.sel {
-  background: var(--heather-soft);
+  background: var(--cobalt-soft);
 }
 
 .grid-cell.active {
-  outline: 2px solid var(--heather);
+  outline: 2px solid var(--cobalt);
   outline-offset: -2px;
   border-radius: var(--r-sm);
 }

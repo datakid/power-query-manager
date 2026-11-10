@@ -1,12 +1,9 @@
 import { writeZip } from '../zip-write.js';
 import { utf8Encode } from '../bytes.js';
 import { encodeText } from '../vba/codepages.js';
+import { sanitizeFileName } from '../filename.js';
 
-export function sanitizeFileName(name, ext) {
-  const base = String(name).replace(/[^\p{L}\p{N} ._()-]/gu, '_').replace(/^\.+/, '').slice(0, 120).trim() || 'file';
-  const clean = base.toLowerCase().endsWith(ext.toLowerCase()) ? base.slice(0, base.length - ext.length) : base;
-  return `${clean.slice(0, 120 - ext.length)}${ext}`;
-}
+export { sanitizeFileName };
 
 export function queryFile(name, text) {
   return { name: sanitizeFileName(name, '.m'), data: utf8Encode(text.replace(/\r?\n/g, '\r\n')) };

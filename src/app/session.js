@@ -2,12 +2,11 @@ import { openWorkbook } from '../core/workbook.js';
 import { buildWorkbook } from '../core/save.js';
 import { buildSnapshot, buildBindingWorkbook } from '../core/snapshot.js';
 import { checkSection, parseSection } from '../core/m/engine.js';
-import { rebuildSection } from '../core/pq/section.js';
+import { rebuildSection, normalizeQueryText } from '../core/pq/section.js';
 import { composeModuleText } from '../core/vba/writeback.js';
-import { sanitizeFileName } from '../core/export/files.js';
+import { suggestedFileName } from '../core/filename.js';
+import { validateModuleText } from '../core/vba/validate.js';
 import { QuoinError } from '../core/errors.js';
-
-const trimEnds = (s) => s.replace(/^\s+/, '').replace(/\s+$/, '');
 
 export class Session {
   constructor() {
@@ -59,7 +58,7 @@ export class Session {
 
   setText(item, text) {
     const edits = item.type === 'query' ? this.queryEdits : this.moduleEdits;
-    const norm = item.type === 'query' ? trimEnds(text) : text;
+    const norm = item.type === 'query' ? normalizeQueryText(text) : text;
     if (norm === this.originalText(item)) edits.delete(item.name);
     else edits.set(item.name, text);
   }
@@ -72,8 +71,23 @@ export class Session {
     (item.type === 'query' ? this.queryEdits : this.moduleEdits).delete(item.name);
   }
 
+  changes() {
+    const queries = new Map();
+    for (const [name, current] of this.queryEdits) {
+      const q = this.query(name);
+      if (q) queries.set(name, { original: q.original, current: normalizeQueryText(current) });
+    }
+    const modules = new Map();
+    for (const [name, current] of this.moduleEdits) modules.set(name, { original: this.originalText({ type: 'module', name }), current });
+    return { queries, modules, count: queries.size + modules.size };
+  }
+
+  isDirty() {
+    return this.changes().count > 0;
+  }
+
   get editCount() {
-    return this.queryEdits.size + this.moduleEdits.size;
+    return this.changes().count;
   }
 
   queryEditable() {
@@ -97,8 +111,24 @@ export class Session {
   currentSectionText() {
     const mashup = this.wb.mashup;
     const edits = new Map();
-    for (const [name, text] of this.queryEdits) edits.set(name, trimEnds(text));
+    for (const [name, text] of this.queryEdits) edits.set(name, normalizeQueryText(text));
     return rebuildSection(mashup.section.text, mashup.split.members.filter((m) => edits.has(m.name)), edits);
+  }
+
+  validateModule(name, text) {
+    const project = this.wb && this.wb.vba && this.wb.vba.project;
+    const mod = this.module(name);
+    if (!project || !mod) return [];
+    return validateModuleText({ text, codePage: project.codePage, originalBytes: mod.sourceBytes });
+  }
+
+  vbaProblems() {
+    const out = new Map();
+    for (const [name, text] of this.moduleEdits) {
+      const problems = this.validateModule(name, text);
+      if (problems.length) out.set(name, problems);
+    }
+    return out;
   }
 
   async snapshot() {
@@ -133,9 +163,7 @@ export class Session {
   }
 
   suggestedName() {
-    const base = (this.wb.fileName || 'workbook').replace(/\.[^.]*$/, '');
-    const ext = this.wb.vba ? 'xlsm' : this.wb.format === 'xlsm' || this.wb.format === 'xltm' ? this.wb.format : this.wb.format;
-    return sanitizeFileName(`${base} (edited).${ext}`, `.${ext}`);
+    return suggestedFileName(this.wb);
   }
 
   composeModule(name) {

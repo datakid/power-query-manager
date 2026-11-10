@@ -1,6 +1,10 @@
 import { h, clear } from '../ui/dom.js';
 import { S, errorMessage, fmt } from '../ui/strings.js';
-import { settingsDialog, shortcutsDialog, detailsDialog, menu, popover } from '../ui/dialogs.js';
+import { formatsFor } from '../ui/formats.js';
+import { markImg, syncMarks, watchMarks } from '../ui/mark.js';
+import { hasFilePicker, writeThroughPicker } from './file-save.js';
+import { openPrintPreview, printWithoutPreview } from '../ui/print-preview.js';
+import { settingsDialog, shortcutsDialog, detailsDialog, changesDialog, confirmDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
 import { queryFile, moduleFile, zipFiles, sanitizeFileName } from '../core/export/files.js';
@@ -20,6 +24,7 @@ function loadTheme() {
 function applyTheme(t) {
   if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
   else document.documentElement.removeAttribute('data-theme');
+  syncMarks();
   try {
     if (t === 'system') window.localStorage.removeItem('quoin.theme');
     else window.localStorage.setItem('quoin.theme', t);
@@ -38,42 +43,88 @@ function saveBytes(bytes, name, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
+const STATUS_INTERVAL_MS = 500;
+const WORKBOOK_MIMES = {
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+  xltx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+  xltm: 'application/vnd.ms-excel.template.macroEnabled.12'
+};
+const OPENABLE_NAME = /\.(xlsx|xlsm|xltx|xltm|xls|xlsb|ods)$/i;
+
 class Status {
-  constructor(el) {
+  constructor(el, alertEl) {
     this.el = el;
-    this.state = { run: null, compare: null, culture: 'en-US', note: '', edits: 0, flags: [], counts: '' };
-    this.render();
+    this.alertEl = alertEl;
+    this.state = { run: null, compare: null, culture: 'en-US', note: '', edits: 0, flags: [], counts: '', alertText: '' };
+    this.sig = null;
+    this.lastAt = -Infinity;
+    this.timer = null;
+    this.zw = false;
+    this.flush();
   }
 
   set(partial) {
+    if (partial.note && partial.note === this.state.note) this.zw = !this.zw;
     Object.assign(this.state, partial);
-    this.render();
+    this.schedule();
   }
 
-  render() {
+  describe() {
     const st = this.state;
-    clear(this.el);
+    const f = formatsFor(st.culture);
     const bits = [];
+    let alert = st.alertText || '';
     if (st.run) {
       if (st.run.cancelled) bits.push(S.cancelled);
       else if (st.run.fn) bits.push(S.functionStatus);
-      else if (st.run.error) bits.push(S.errorStatus(st.run.error));
-      else if (st.run.rows !== undefined) bits.push(S.runStatus(st.run.rows, st.run.secs));
+      else if (st.run.error) alert = alert || S.errorStatus(st.run.error);
+      else if (st.run.rows !== undefined) bits.push(S.runStatus(st.run.rows, st.run.secs, f.integer.format(st.run.rows)));
       else bits.push(S.valueStatus(st.run.secs));
     }
-    this.el.append(h('span', null, [st.counts, ...bits].filter(Boolean).join(' · ') || ' '));
+    const items = [{ text: [st.counts, ...bits].filter(Boolean).join(' · ') || ' ' }];
     const c = st.compare;
     if (c) {
-      if (c.disabled) this.el.append(h('span', null, ' · ', c.disabled === 'time' ? S.compareTime : S.compareRandom));
-      else if (c.reason === 'columns') this.el.append(h('span', null, ' · ', S.compareColumns));
-      else if (c.matches) this.el.append(h('span', null, ' · ', h('span', { class: 'status-dot ok' }), S.matchesCache));
-      else this.el.append(h('span', null, ' · ', h('span', { class: 'status-dot diff' }), c.reason === 'rows' ? S.rowCountDiffers(c.got, c.expected) : S.cellsDiffer(c.count)));
+      if (c.disabled) items.push({ text: ` · ${c.disabled === 'time' ? S.compareTime : S.compareRandom}` });
+      else if (c.reason === 'columns') items.push({ text: ` · ${S.compareColumns}` });
+      else if (c.matches) items.push({ text: ` · ${S.matchesCache}`, dot: 'ok' });
+      else items.push({ text: ` · ${c.reason === 'rows' ? S.rowCountDiffers(f.integer.format(c.got), f.integer.format(c.expected)) : S.cellsDiffer(f.integer.format(c.count))}`, dot: 'diff' });
     }
-    if (st.flags && st.flags.includes('non-deterministic')) this.el.append(h('span', null, ' · ', S.nonDeterministic));
-    if (st.note) this.el.append(h('span', null, ' · ', st.note));
-    this.el.append(h('span', { class: 'spacer' }));
-    if (st.edits) this.el.append(h('span', null, S.itemsEdited(st.edits)));
-    if (st.culture && st.culture !== 'en-US') this.el.append(h('span', null, ` · ${st.culture}`));
+    if (st.flags && st.flags.includes('non-deterministic')) items.push({ text: ` · ${S.nonDeterministic}` });
+    if (st.note) items.push({ text: ` · ${st.note}${this.zw ? '\u200b' : ''}` });
+    items.push({ spacer: true });
+    if (st.edits) items.push({ text: S.itemsEdited(st.edits) });
+    if (st.culture && st.culture !== 'en-US') items.push({ text: ` · ${st.culture}` });
+    return { items, alert };
+  }
+
+  schedule() {
+    const { items, alert } = this.describe();
+    if (alert !== this.alertEl.textContent) this.alertEl.textContent = alert;
+    if (JSON.stringify(items) === this.sig) return;
+    const wait = STATUS_INTERVAL_MS - (performance.now() - this.lastAt);
+    if (wait <= 0) this.flush();
+    else if (!this.timer) {
+      this.timer = setTimeout(() => {
+        this.timer = null;
+        this.flush();
+      }, wait);
+    }
+  }
+
+  flush() {
+    const { items, alert } = this.describe();
+    if (alert !== this.alertEl.textContent) this.alertEl.textContent = alert;
+    const sig = JSON.stringify(items);
+    if (sig === this.sig) return;
+    this.sig = sig;
+    this.lastAt = performance.now();
+    clear(this.el);
+    for (const it of items) {
+      if (it.spacer) this.el.append(h('span', { class: 'spacer' }));
+      else if (it.dot) this.el.append(h('span', { class: `chip ${it.dot}` }, h('span', { class: `status-dot ${it.dot}` }), it.text.replace(/^ · /, '')));
+      else this.el.append(h('span', null, it.text));
+    }
   }
 }
 
@@ -88,13 +139,18 @@ export class App {
   }
 
   build() {
-    this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() });
-    this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', onclick: () => this.openExport() }, S.export);
+    this.fileHead = h('span', { class: 'fn-head' });
+    this.fileTail = h('span', { class: 'fn-tail' });
+    this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() }, this.fileHead, this.fileTail);
+    this.fileMeta = h('span', { class: 'file-meta item-meta', hidden: true });
+    this.printBtn = h('button', { class: 'btn print-button', type: 'button', hidden: true, onclick: () => this.openPrint() }, S.print);
+    this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
-    this.downloadBtn = h('button', { class: 'btn btn-primary', type: 'button', hidden: true, 'aria-haspopup': 'dialog', onclick: () => this.openDownload() }, S.download);
+    this.downloadCount = h('span', { class: 'dl-count' });
+    this.downloadBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, 'aria-disabled': true, title: S.downloadNone, onclick: () => this.openDownload() }, S.download, this.downloadCount);
     this.topbar = h('header', { class: 'topbar' },
-      h('h1', { class: 'brand' }, h('img', { src: 'public/mark.svg', alt: '', width: '24', height: '24' }), S.appName),
-      this.fileBtn, h('span', { class: 'spacer' }), this.exportBtn, this.settingsBtn, this.downloadBtn);
+      h('h1', { class: 'brand' }, markImg('brand-mark', 28), h('span', { class: 'wordmark' }, S.appName)),
+      this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.printBtn, this.exportBtn, this.settingsBtn, this.downloadBtn);
     this.input = h('input', { type: 'file', class: 'sr-only', accept: '.xlsx,.xlsm,.xltx,.xltm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', tabindex: '-1', 'aria-label': S.chooseFile });
     this.input.addEventListener('change', () => {
       if (this.input.files && this.input.files[0]) this.openFile(this.input.files[0]);
@@ -103,9 +159,11 @@ export class App {
     this.mainEl = h('main', { class: 'content' });
     this.mainEl.style.minHeight = '0';
     this.mainEl.style.display = 'grid';
-    this.statusEl = h('div', { class: 'statusbar', role: 'status', 'aria-live': 'polite' });
-    this.status = new Status(this.statusEl);
-    this.root.append(this.input, this.topbar, this.mainEl, this.statusEl);
+    this.statusEl = h('div', { class: 'status-main', id: 'status', role: 'status', 'aria-live': 'polite' });
+    this.alertEl = h('div', { class: 'status-alert', id: 'alert', role: 'alert' });
+    this.barEl = h('div', { class: 'statusbar' }, this.statusEl, this.alertEl);
+    this.status = new Status(this.statusEl, this.alertEl);
+    this.root.append(this.input, this.topbar, this.mainEl, this.barEl);
     this.root.classList.add('app');
     this.showEmpty();
   }
@@ -114,11 +172,13 @@ export class App {
     clear(this.mainEl);
     this.ws = null;
     this.fileBtn.hidden = true;
+    this.fileMeta.hidden = true;
+    this.printBtn.hidden = true;
     this.exportBtn.hidden = true;
     this.downloadBtn.hidden = true;
     this.zone = h('div', { class: 'dropzone' }, h('p', { class: 'item-meta' }, S.emptyPrompt), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => this.input.click() }, S.chooseFile));
     this.mainEl.append(h('div', { class: 'empty' }, h('div', { class: 'empty-inner' },
-      h('img', { class: 'mark', src: 'public/mark.svg', alt: '', width: '48', height: '48' }),
+      markImg('mark', 64),
       h('h2', null, S.tagline),
       message ? h('div', { class: 'message error', role: 'alert' }, message) : null,
       this.zone,
@@ -126,28 +186,94 @@ export class App {
   }
 
   bindGlobal() {
-    const over = (on) => (ev) => {
-      ev.preventDefault();
+    this.installPrintFallback();
+    this.dragDepth = 0;
+    const setOver = (on) => {
       if (this.zone) this.zone.classList.toggle('is-over', on);
     };
-    window.addEventListener('dragover', over(true));
-    window.addEventListener('dragleave', over(false));
+    window.addEventListener('dragenter', (ev) => {
+      ev.preventDefault();
+      this.dragDepth++;
+      setOver(true);
+    });
+    window.addEventListener('dragover', (ev) => {
+      ev.preventDefault();
+      if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
+      setOver(true);
+    });
+    window.addEventListener('dragleave', () => {
+      this.dragDepth = Math.max(0, this.dragDepth - 1);
+      if (this.dragDepth === 0) setOver(false);
+    });
     window.addEventListener('drop', (ev) => {
       ev.preventDefault();
-      if (this.zone) this.zone.classList.remove('is-over');
-      const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
-      if (f) this.openFile(f);
+      this.dragDepth = 0;
+      setOver(false);
+      this.handleDrop(ev.dataTransfer);
     });
-    window.addEventListener('beforeunload', (ev) => {
-      if (this.session.editCount > 0) {
-        ev.preventDefault();
-        ev.returnValue = S.unsavedLeave;
-      }
-    });
+    this.leaveGuard = (ev) => {
+      ev.preventDefault();
+      ev.returnValue = S.unsavedLeave;
+    };
+    this.guarding = false;
     window.addEventListener('keydown', (ev) => this.onKey(ev));
   }
 
+  refuse(text) {
+    if (this.ws) this.status.set({ alertText: text });
+    else this.showEmpty(text);
+  }
+
+  handleDrop(dt) {
+    if (!dt) return;
+    const first = dt.items && dt.items[0];
+    const handle = first && typeof first.getAsFileSystemHandle === 'function' ? first.getAsFileSystemHandle().catch(() => null) : null;
+    const files = [...(dt.files || [])];
+    const items = [...(dt.items || [])];
+    const folder = items.some((it) => it.kind === 'file' && typeof it.webkitGetAsEntry === 'function' && (it.webkitGetAsEntry() || {}).isDirectory);
+    if (folder) this.refuse(S.dropFolder);
+    else if (files.length > 1) this.refuse(S.dropOne);
+    else if (files.length === 1) this.openFile(files[0], handle);
+  }
+
+  async openPrint() {
+    if (!this.ws || this.printView) return;
+    await openPrintPreview(this, this.printBtn);
+  }
+
+  installPrintFallback() {
+    window.addEventListener('beforeprint', () => {
+      if (this.printView || !this.ws) return;
+      this.tempPrint = printWithoutPreview(this);
+      if (this.tempPrint) document.body.append(this.tempPrint);
+    });
+    window.addEventListener('afterprint', () => {
+      if (this.tempPrint) {
+        this.tempPrint.remove();
+        this.tempPrint = null;
+      }
+    });
+  }
+
+  syncDownload() {
+    const n = this.session.editCount;
+    this.downloadBtn.setAttribute('aria-disabled', String(n === 0));
+    if (n === 0) this.downloadBtn.setAttribute('title', S.downloadNone);
+    else this.downloadBtn.removeAttribute('title');
+    this.downloadCount.textContent = n === 0 ? '' : S.downloadCount(n);
+  }
+
+  syncLeaveGuard() {
+    const dirty = this.session.editCount > 0;
+    if (dirty === this.guarding) return;
+    this.guarding = dirty;
+    if (dirty) window.addEventListener('beforeunload', this.leaveGuard);
+    else window.removeEventListener('beforeunload', this.leaveGuard);
+  }
+
   onKey(ev) {
+    if (this.printView) return;
+    if (ev.key !== 'Escape' && document.querySelector('dialog[open]')) return;
     const mod = ev.ctrlKey || ev.metaKey;
     const key = ev.key.toLowerCase();
     if (mod && key === 'o') {
@@ -161,6 +287,9 @@ export class App {
     } else if (mod && key === 's') {
       ev.preventDefault();
       if (this.ws) this.openDownload();
+    } else if (mod && !ev.shiftKey && key === 'p') {
+      ev.preventDefault();
+      if (this.ws) this.openPrint();
     } else if (mod && ev.shiftKey && key === 'e') {
       ev.preventDefault();
       if (this.ws) this.openExport();
@@ -176,10 +305,14 @@ export class App {
     }
   }
 
-  async openFile(file) {
-    if (this.session.editCount > 0 && !window.confirm(S.unsavedLeave)) return;
+  async openFile(file, handlePromise) {
+    if (!OPENABLE_NAME.test(file.name)) {
+      this.refuse(S.dropType);
+      return;
+    }
+    if (this.session.editCount > 0 && !(await confirmDialog({ title: S.discardTitle, body: S.discardBody(this.session.editCount), confirmLabel: S.discard }))) return;
     const next = new Session();
-    this.status.set({ run: null, compare: null, note: '', edits: 0, counts: '' });
+    this.status.set({ run: null, compare: null, note: '', edits: 0, counts: '', alertText: '' });
     try {
       await next.open(file);
     } catch (e) {
@@ -187,21 +320,32 @@ export class App {
       this.showEmpty(errorMessage(code));
       return;
     }
+    next.sourceHandle = handlePromise ? await handlePromise : null;
     this.session = next;
     this.settings = { ...this.settings };
     clear(this.mainEl);
     this.ws = new Workspace(this.mainEl, this.session, this.settings, this.status);
     this.ws.onEdit(() => {
       this.status.set({ edits: this.session.editCount });
-      this.downloadBtn.disabled = false;
+      this.syncDownload();
+      this.syncLeaveGuard();
     });
-    this.fileBtn.textContent = file.name;
+    this.syncDownload();
+    this.syncLeaveGuard();
+    const dot = file.name.lastIndexOf('.');
+    const split = dot > 0 ? dot : file.name.length;
+    this.fileHead.textContent = file.name.slice(0, split);
+    this.fileTail.textContent = file.name.slice(split);
     this.fileBtn.hidden = false;
+    this.fileMeta.textContent = S.fileMeta(file.size);
+    this.fileMeta.hidden = false;
+    this.printBtn.hidden = false;
     this.exportBtn.hidden = false;
     this.downloadBtn.hidden = false;
     this.status.set({ counts: S.fileCounts(next.queries.length, next.modules.length) });
     this.ws.renderRail();
     this.ws.selectFirst();
+    this.ws.focusRail();
     this.announceWarnings();
     document.title = S.titleWithApp(file.name);
   }
@@ -229,38 +373,51 @@ export class App {
       Object.assign(this.settings, next);
       applyTheme(next.theme);
       this.status.set({ culture: next.culture });
-      if (this.ws) this.ws.settings = this.settings;
+      if (this.ws) {
+        this.ws.settings = this.settings;
+        this.ws.applyCulture();
+      }
     });
   }
 
   openDownload() {
     const s = this.session;
+    if (s.editCount === 0) return;
     const qn = s.queryEdits.size;
     const mn = s.moduleEdits.size;
     const signed = !!(s.wb.vba && s.wb.vba.signed) && mn > 0;
     const refresh = h('input', { type: 'checkbox', id: 'dl-refresh', checked: true });
     const ack = h('input', { type: 'checkbox', id: 'dl-ack' });
     const msg = h('p', { class: 'warn', role: 'alert', hidden: true });
-    const go = h('button', { class: 'btn btn-primary', type: 'button', disabled: qn + mn === 0 || signed }, S.download);
+    const blocked = s.vbaProblems();
+    const firstBlocked = blocked.size ? [...blocked][0] : null;
+    const go = h('button', { class: 'btn btn-primary', type: 'button', disabled: qn + mn === 0 || signed || blocked.size > 0 }, S.download);
     const content = h('div', { class: 'popover-body' },
       h('p', null, qn + mn === 0 ? S.downloadNone : S.changedSummary(qn, mn)),
       qn ? h('label', { class: 'check', for: 'dl-refresh' }, refresh, S.refreshOnOpen) : null,
       qn ? h('p', { class: 'note' }, S.cacheNote) : null,
+      firstBlocked ? h('p', { class: 'warn', role: 'alert' }, S.vbaBlocked(firstBlocked[0], errorMessage(firstBlocked[1][0].code, firstBlocked[1][0]))) : null,
       signed ? h('p', { class: 'warn' }, S.signedNote) : null,
       signed ? h('label', { class: 'check', for: 'dl-ack' }, ack, S.understand) : null,
       msg,
-      h('div', { class: 'dialog-actions' }, go));
+      h('div', { class: 'dialog-actions' }, h('button', { class: 'btn btn-quiet', type: 'button', onclick: () => {
+        pop.close();
+        this.openChanges();
+      } }, S.reviewChanges), go));
     const pop = popover(this.downloadBtn, content, null, S.download);
     ack.addEventListener('change', () => {
-      go.disabled = !ack.checked || qn + mn === 0;
+      go.disabled = !ack.checked || qn + mn === 0 || blocked.size > 0;
     });
     go.addEventListener('click', async () => {
       go.disabled = true;
       try {
         const res = await s.download({ refreshOnLoad: refresh.checked, acknowledgeSignature: ack.checked, faultInject: this.faultInject });
-        saveBytes(res.bytes, s.suggestedName(), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        const saved = await this.saveWorkbook(res.bytes);
+        if (!saved) {
+          go.disabled = false;
+          return;
+        }
         pop.close();
-        this.status.set({ note: S.downloaded(s.suggestedName()) });
       } catch (e) {
         const code = e instanceof QuoinError ? e.code : 'write.selfcheck';
         msg.hidden = false;
@@ -270,6 +427,44 @@ export class App {
       }
     });
     (qn + mn === 0 ? content : go).focus && go.focus();
+  }
+
+  async saveWorkbook(bytes) {
+    const s = this.session;
+    const name = s.suggestedName();
+    const mime = WORKBOOK_MIMES[name.slice(name.lastIndexOf('.') + 1)] || WORKBOOK_MIMES.xlsx;
+    if (hasFilePicker()) {
+      const out = await writeThroughPicker({
+        bytes,
+        name,
+        mime,
+        extension: name.slice(name.lastIndexOf('.') + 1),
+        description: S.workbookFileType,
+        sourceHandle: s.sourceHandle,
+        confirmReplace: (n) => confirmDialog({ title: S.replaceTitle, body: S.replaceBody(n), confirmLabel: S.replaceConfirm, cancelLabel: S.chooseAnotherName })
+      });
+      if (!out) return false;
+      this.status.set({ note: S.savedTo(out.name) });
+      return true;
+    }
+    saveBytes(bytes, name, mime);
+    this.status.set({ note: S.downloaded(name) });
+    return true;
+  }
+
+  openChanges() {
+    changesDialog(this.session.changes(), {
+      onRevertAll: async () => {
+        const n = this.session.editCount;
+        const ok = await confirmDialog({ title: S.revertAllTitle, body: S.revertAllBody(n), confirmLabel: S.revertAll });
+        if (!ok) {
+          this.openChanges();
+          return;
+        }
+        this.ws.revertAll();
+        this.status.set({ note: S.revertedAll });
+      }
+    });
   }
 
   async exportResult(format, ext) {
@@ -307,6 +502,8 @@ export class App {
       { label: S.exportModule, run: () => this.saveCode(item), disabled: !item || item.type !== 'module' },
       { label: S.exportModules, run: () => this.saveZip('modules'), disabled: !s.modules.length },
       { label: S.exportEverything, run: () => this.saveZip('all'), disabled: !s.queries.length && !s.modules.length },
+      { heading: true, label: S.print },
+      { label: S.printPreviewTitle, run: () => this.openPrint() },
       { heading: true, label: S.exportSettings },
       { check: this.settings.csvGuard, id: 'guard', label: S.csvGuardLabel, onToggle: (v) => {
         this.settings.csvGuard = v;
@@ -338,6 +535,7 @@ export class App {
 
 export function boot() {
   applyTheme(loadTheme());
+  watchMarks();
   const root = document.getElementById('app');
   const app = new App(root);
   window.__quoin = app;

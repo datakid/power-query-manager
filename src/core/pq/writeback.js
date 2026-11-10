@@ -2,7 +2,7 @@ import { QuoinError } from '../errors.js';
 import { base64Encode } from '../bytes.js';
 import { applyEdits, attributeEdit, textContentEdit, parseXml } from '../xml.js';
 import { buildDataMashup } from './datamashup.js';
-import { rebuildSection } from './section.js';
+import { rebuildSection, normalizeQueryText } from './section.js';
 
 function wrapBase64(text, lineLength) {
   if (!lineLength) return text;
@@ -16,7 +16,7 @@ export function changedQueryEdits(wb, edits) {
   for (const [name, view] of edits) {
     const q = wb.queries.find((x) => x.name === name);
     if (!q) throw new QuoinError('pq.unknown', name);
-    const trimmed = view.replace(/^\s+/, '').replace(/\s+$/, '');
+    const trimmed = normalizeQueryText(view);
     if (trimmed !== q.original) out.set(name, trimmed);
   }
   return out;

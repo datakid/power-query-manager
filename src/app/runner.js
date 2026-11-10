@@ -1,3 +1,7 @@
+import { DEFAULT_LIMITS } from '../core/limits.js';
+
+const GRACE_MS = 2000;
+
 export class Runner {
   constructor() {
     this.worker = null;
@@ -29,27 +33,44 @@ export class Runner {
     this.ensure();
     const id = ++this.seq;
     this.runId = id;
+    const timeoutMs = (params.limits && params.limits.timeoutMs) || DEFAULT_LIMITS.timeoutMs;
     return new Promise((resolve) => {
+      let timer = null;
+      const arm = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => this.stop({ type: 'result', status: 'stopped', code: 'm.timeout' }), timeoutMs + GRACE_MS);
+      };
+      const disarm = () => clearTimeout(timer);
       this.handlers.set(id, async (m) => {
         if (m.type === 'need-binding') {
+          disarm();
           const binding = await onNeedBinding(m.kind, m.key);
-          if (this.runId === id && this.worker) this.worker.postMessage({ type: 'binding', id, key: m.key, binding });
+          if (this.runId === id && this.worker) {
+            this.worker.postMessage({ type: 'binding', id, key: m.key, binding });
+            arm();
+          }
         } else if (m.type === 'result') {
+          disarm();
           this.handlers.delete(id);
           if (this.runId === id) this.runId = null;
           resolve({ ...m, runId: id });
         }
       });
+      arm();
       this.worker.postMessage({ type: 'run', id, ...params });
     });
   }
 
-  cancel() {
+  stop(result) {
     if (this.worker) this.worker.terminate();
     this.worker = null;
-    for (const h of this.handlers.values()) h({ type: 'result', status: 'cancelled' });
+    for (const h of this.handlers.values()) h(result);
     this.handlers.clear();
     this.runId = null;
+  }
+
+  cancel() {
+    this.stop({ type: 'result', status: 'cancelled' });
   }
 
   request(message) {
@@ -65,7 +86,7 @@ export class Runner {
   }
 
   rows(start, count) {
-    return this.request({ type: 'rows', start, count }).then((m) => m.rows);
+    return this.request({ type: 'rows', start, count }).then((m) => (Array.isArray(m.rows) ? m.rows : []));
   }
 
   export(format, options) {

@@ -3,53 +3,68 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { root } from './helpers.js';
+import { cssBlock, colourTokens, contrastProblems, ratio } from './contrast-lib.js';
 
 const css = readFileSync(join(root, 'styles', 'tokens.css'), 'utf8');
 const pairs = JSON.parse(readFileSync(join(root, 'tests', 'a11y', 'pairs.json'), 'utf8'));
 
-function block(selectorStart) {
-  const i = css.indexOf(selectorStart);
-  const open = css.indexOf('{', i);
-  let depth = 0;
-  for (let k = open; k < css.length; k++) {
-    if (css[k] === '{') depth++;
-    if (css[k] === '}') {
-      depth--;
-      if (depth === 0) return css.slice(open + 1, k);
-    }
-  }
-  return '';
-}
-
-function tokens(text) {
-  const out = {};
-  for (const m of text.matchAll(/(--[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})\s*;/g)) out[m[1]] = m[2];
-  return out;
-}
-
-const lum = (hex) => {
-  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-};
-
-const ratio = (a, b) => {
-  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-};
-
-const light = tokens(block(':root {'));
-const dark = tokens(block(':root[data-theme="dark"]'));
+const lightBlock = cssBlock(css, ':root {');
+const darkBlock = cssBlock(css, ':root[data-theme="dark"]');
+const light = colourTokens(lightBlock).hex;
+const dark = colourTokens(darkBlock).hex;
 
 for (const [theme, set] of [['light', light], ['dark', dark]]) {
   for (const [fg, bg, min] of pairs[theme]) {
     test(`T-A11Y-3: ${theme} ${fg} on ${bg} meets ${min}:1`, () => {
+      assert.ok(set[fg] && set[bg], `${fg} or ${bg} is not a plain hex token in the ${theme} block`);
       const r = ratio(set[fg], set[bg]);
       assert.ok(r >= min, `${set[fg]} on ${set[bg]} is ${r.toFixed(2)}:1`);
     });
   }
 }
 
+test('T-B-21: every token named in pairs.json exists, every colour token is covered or exempt, nothing is not plain hex', () => {
+  assert.deepEqual(contrastProblems({ light: lightBlock, dark: darkBlock, pairs }), []);
+});
+
 test('the media-query dark block matches the explicit dark theme tokens', () => {
-  const auto = tokens(block('@media (prefers-color-scheme: dark)'));
+  const auto = colourTokens(cssBlock(css, '@media (prefers-color-scheme: dark)')).hex;
   for (const k of Object.keys(dark)) assert.equal(auto[k], dark[k], k);
+});
+
+const MINI_LIGHT = '--ink: #111111; --ground: #FFFFFF;';
+const MINI_DARK = '--ink: #EEEEEE; --ground: #000000;';
+const MINI_PAIRS = { light: [['--ink', '--ground', 4.5]], dark: [['--ink', '--ground', 4.5]] };
+
+test('T-B-21: the checker passes a complete palette', () => {
+  assert.deepEqual(contrastProblems({ light: MINI_LIGHT, dark: MINI_DARK, pairs: MINI_PAIRS }), []);
+});
+
+test('T-B-21: the checker reports a token that no pair covers', () => {
+  const problems = contrastProblems({ light: `${MINI_LIGHT} --extra: #123456;`, dark: `${MINI_DARK} --extra: #654321;`, pairs: MINI_PAIRS });
+  assert.deepEqual(problems, ['uncovered:--extra']);
+});
+
+test('T-B-21: the checker reports a pair whose token is missing from a theme', () => {
+  const problems = contrastProblems({ light: MINI_LIGHT, dark: '--ink: #EEEEEE;', pairs: MINI_PAIRS });
+  assert.deepEqual(problems, ['missing:dark:--ground']);
+});
+
+test('T-B-21: dropping a pair makes its tokens uncovered instead of greener', () => {
+  const problems = contrastProblems({ light: `${MINI_LIGHT} --accent: #336699;`, dark: `${MINI_DARK} --accent: #99CCFF;`, pairs: { light: [['--ink', '--ground', 4.5]], dark: [['--ink', '--ground', 4.5]] } });
+  assert.deepEqual(problems, ['uncovered:--accent']);
+});
+
+test('T-B-21: shorthand hex is read, other colour syntax is rejected unless exempt with a reason', () => {
+  assert.deepEqual(contrastProblems({ light: '--ink: #111; --ground: #fff;', dark: MINI_DARK, pairs: MINI_PAIRS }), []);
+  const bad = contrastProblems({ light: `${MINI_LIGHT} --veil: rgb(0 0 0 / .4);`, dark: MINI_DARK, pairs: MINI_PAIRS });
+  assert.deepEqual(bad, ['not-plain-hex:light:--veil=rgb(0 0 0 / .4)', 'uncovered:--veil']);
+  const ok = contrastProblems({ light: `${MINI_LIGHT} --veil: rgb(0 0 0 / .4);`, dark: MINI_DARK, pairs: { ...MINI_PAIRS, exempt: { '--veil': 'overlay scrim, not text' } } });
+  assert.deepEqual(ok, []);
+});
+
+test('T-B-21: an exempt entry needs a reason and must name a real token that is not also paired', () => {
+  const pairsWith = (exempt) => ({ ...MINI_PAIRS, exempt });
+  assert.deepEqual(contrastProblems({ light: MINI_LIGHT, dark: MINI_DARK, pairs: pairsWith({ '--ghost': 'nothing' }) }), ['exempt-unknown:--ghost']);
+  assert.deepEqual(contrastProblems({ light: MINI_LIGHT, dark: MINI_DARK, pairs: pairsWith({ '--ink': '' }) }), ['exempt-but-paired:--ink', 'exempt-without-reason:--ink']);
 });

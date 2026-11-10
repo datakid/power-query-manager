@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fx, ext, openApp, loadFile, item, editor, runButton } from '../e2e/helpers.js';
+import { STATES, settle } from '../e2e/states.js';
 
 const require = createRequire(import.meta.url);
 const axeSource = readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
@@ -34,7 +35,7 @@ for (const theme of ['light', 'dark']) {
     await audit(page, `${theme} export menu`);
     await page.keyboard.press('Escape');
     await editor(page).fill(`${await editor(page).inputValue()}\n' x`);
-    await page.locator('.topbar .btn-primary').click();
+    await page.locator('.topbar button[aria-haspopup="dialog"]').click();
     await audit(page, `${theme} download`);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Shift+?');
@@ -45,6 +46,7 @@ for (const theme of ['light', 'dark']) {
 test('T-A11Y-2: tab order reaches the main regions and every control shows a visible focus ring', async ({ page }) => {
   await openApp(page);
   await loadFile(page, fx('mixed.xlsm'));
+  await page.locator('.topbar button').first().focus();
   const seen = new Set();
   for (let i = 0; i < 30; i++) {
     await page.keyboard.press('Tab');
@@ -90,3 +92,36 @@ test('reduced motion removes the progress animation', async ({ page }) => {
   const dur = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--dur-fast').trim());
   expect(dur).toBe('0ms');
 });
+
+const AUDITED = ['01-empty', '03-query-selected', '05-result-10000-rows', '08-vba-module', '09-settings-dialog'];
+
+for (const theme of ['light', 'dark']) {
+  for (const id of AUDITED) {
+    test(`T-I-03: axe is clean on ${id} in the ${theme} theme`, async ({ browser }) => {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: theme, reducedMotion: 'reduce' });
+      const page = await ctx.newPage();
+      await openApp(page);
+      await STATES.find((s) => s.id === id).run(page);
+      await settle(page);
+      await audit(page, `${theme} ${id}`);
+      await ctx.close();
+    });
+  }
+}
+
+for (const theme of ['light', 'dark']) {
+  test(`T-P-14d: axe is clean on the print preview in the ${theme} theme`, async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, colorScheme: theme, reducedMotion: 'reduce' });
+    const page = await ctx.newPage();
+    await openApp(page);
+    await loadFile(page, ext('pq_simple.xlsx'));
+    await item(page, 'StudentResults').click();
+    await editor(page).fill('Table.FromColumns({List.Numbers(1, 200)}, {"N"})');
+    await runButton(page).click();
+    await page.waitForSelector('.grid-cell:not(.grid-index)');
+    await page.getByRole('button', { name: 'Print' }).click();
+    await page.waitForSelector('.print-page');
+    await audit(page, `print preview ${theme}`);
+    await ctx.close();
+  });
+}

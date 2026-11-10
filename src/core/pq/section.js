@@ -3,6 +3,8 @@ import { lex } from '../m/lexer.js';
 const OPEN = new Set(['(', '[', '{']);
 const CLOSE = new Set([')', ']', '}']);
 
+export const normalizeQueryText = (s) => s.replace(/^\s+/, '').replace(/\s+$/, '');
+
 const isTrivia = (t) => t.kind === 'ws' || t.kind === 'comment';
 
 export function splitSection(text) {

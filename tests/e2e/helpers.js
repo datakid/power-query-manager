@@ -12,6 +12,9 @@ export async function openApp(page, path = '/index.html') {
     if (m.type() === 'error' || m.type() === 'warning') problems.push(`${m.type()}: ${m.text()}`);
   });
   page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
+  await page.addInitScript(() => {
+    delete window.showSaveFilePicker;
+  });
   await page.goto(path);
   await page.waitForSelector('.dropzone');
   return problems;
@@ -38,7 +41,7 @@ export const item = (page, name) => page.locator(`[role=treeitem][data-name="${n
 export const editor = (page) => page.locator('.editor-wrap textarea');
 export const runButton = (page) => page.getByRole('button', { name: /^Run/ });
 export const status = (page) => page.locator('.statusbar');
-export const downloadButton = (page) => page.locator('.topbar .btn-primary');
+export const downloadButton = (page) => page.locator('.topbar button[aria-haspopup="dialog"]');
 
 export async function runCurrent(page) {
   await runButton(page).click();

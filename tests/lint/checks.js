@@ -38,6 +38,45 @@ function visit(node, fn, parent = null) {
   }
 }
 
+function visitWithAncestors(node, fn, ancestors = []) {
+  if (!node || typeof node.type !== 'string') return;
+  fn(node, ancestors);
+  const next = [...ancestors, node];
+  for (const key of Object.keys(node)) {
+    const v = node[key];
+    if (Array.isArray(v)) v.forEach((c) => c && typeof c.type === 'string' && visitWithAncestors(c, fn, next));
+    else if (v && typeof v.type === 'string') visitWithAncestors(v, fn, next);
+  }
+}
+
+function containsThrow(node) {
+  let found = false;
+  visit(node, (n) => {
+    if (n.type === 'ThrowStatement') found = true;
+  });
+  return found;
+}
+
+function cssBlock(text, marker) {
+  const at = text.indexOf(marker);
+  if (at < 0) return '';
+  const open = text.indexOf('{', at);
+  let depth = 0;
+  for (let k = open; k < text.length; k++) {
+    if (text[k] === '{') depth++;
+    if (text[k] === '}') {
+      depth--;
+      if (depth === 0) return text.slice(open + 1, k);
+    }
+  }
+  return '';
+}
+
+const cssToken = (block, name) => {
+  const m = new RegExp(`${name}:\\s*(#[0-9A-Fa-f]{3,8})\\s*;`).exec(block);
+  return m ? m[1].toUpperCase() : null;
+};
+
 export function runAll() {
   const findings = [];
   const add = (rule, file, line, msg) => findings.push({ rule, file: rel(file), line, msg });
@@ -162,6 +201,113 @@ export function runAll() {
       }
       if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression' && n.left.property.name === 'textContent' && n.right.type === 'Literal' && typeof n.right.value === 'string' && n.right.value.length > 0) add('T-LINT-9', f, n.loc.start.line, `textContent "${n.right.value}"`);
       if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && ['setMessage'].includes(n.callee.property.name) && n.arguments[0] && n.arguments[0].type === 'Literal' && textLike(String(n.arguments[0].value))) add('T-LINT-9', f, n.loc.start.line, `message "${n.arguments[0].value}"`);
+    });
+  }
+
+  const selfCheckFiles = new Set();
+  for (const f of srcJs) {
+    const entry = parsed.get(f);
+    if (!entry) continue;
+    visitWithAncestors(entry.ast, (n, ancestors) => {
+      if (n.type === 'Identifier' && n.name === 'selfCheck') selfCheckFiles.add(rel(f));
+      if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && n.callee.name === 'selfCheck') {
+        ancestors.forEach((a, i) => {
+          if (a.type === 'TryStatement' && ancestors[i + 1] === a.block && (!a.handler || !containsThrow(a.handler.body))) add('T-LINT-12', f, n.loc.start.line, 'selfCheck called inside a try block whose catch does not rethrow');
+        });
+      }
+    });
+  }
+  if (selfCheckFiles.size !== 1 || !selfCheckFiles.has('src/core/save.js')) add('T-LINT-12', join(root, 'src/core/save.js'), 0, `selfCheck must be defined and used only in src/core/save.js, found in: ${[...selfCheckFiles].join(', ') || 'nowhere'}`);
+
+  const tokensCss = read(join(root, 'styles', 'tokens.css'));
+  const appCss = read(join(root, 'styles', 'app.css'));
+  const bodyRule = /(?:^|\n)body\s*\{[^}]*?background:\s*var\((--[a-z0-9-]+)\)/.exec(appCss);
+  const groundToken = bodyRule ? bodyRule[1] : null;
+  if (!groundToken) add('T-LINT-13', join(root, 'styles', 'app.css'), 0, 'body background does not use a token');
+  else {
+    const ground = { light: cssToken(cssBlock(tokensCss, ':root {'), groundToken), dark: cssToken(cssBlock(tokensCss, ':root[data-theme="dark"]'), groundToken) };
+    if (!ground.light || !ground.dark) add('T-LINT-13', join(root, 'styles', 'tokens.css'), 0, `${groundToken} missing a light or dark value`);
+    const html = read(join(root, 'index.html'));
+    for (const scheme of ['light', 'dark']) {
+      const m = new RegExp(`<meta name="theme-color" content="(#[0-9A-Fa-f]{6})" media="\\(prefers-color-scheme: ${scheme}\\)">`).exec(html);
+      if (!m) add('T-LINT-13', join(root, 'index.html'), 0, `no ${scheme} theme-color meta`);
+      else if (m[1].toUpperCase() !== ground[scheme]) add('T-LINT-13', join(root, 'index.html'), 0, `${scheme} theme-color ${m[1]} is not ${groundToken} ${ground[scheme]}`);
+    }
+    const manifest = JSON.parse(read(join(root, 'manifest.webmanifest')));
+    for (const key of ['theme_color', 'background_color']) {
+      if (String(manifest[key]).toUpperCase() !== ground.light) add('T-LINT-13', join(root, 'manifest.webmanifest'), 0, `${key} ${manifest[key]} is not ${groundToken} ${ground.light}`);
+    }
+  }
+
+  const directives = (policy) => policy.split(';').map((d) => d.trim().replace(/\s+/g, ' ')).filter(Boolean).sort();
+  const cspSources = {
+    'index.html': /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(read(join(root, 'index.html'))),
+    '_headers': /Content-Security-Policy:\s*(.+)/.exec(read(join(root, '_headers'))),
+    'vercel.json': /"key": "Content-Security-Policy", "value": "([^"]+)"/.exec(read(join(root, 'vercel.json'))),
+    'tests/e2e/server.js': /'Content-Security-Policy': "([^"]+)"/.exec(read(join(root, 'tests', 'e2e', 'server.js')))
+  };
+  const policies = {};
+  for (const [name, m] of Object.entries(cspSources)) {
+    if (!m) add('T-LINT-14', join(root, name), 0, 'Content-Security-Policy not found');
+    else policies[name] = directives(m[1]);
+  }
+  const isAncestors = (d) => d.startsWith('frame-ancestors');
+  if (policies['index.html'] && policies['index.html'].some(isAncestors)) add('T-LINT-14', join(root, 'index.html'), 0, 'frame-ancestors is ignored in a meta policy and logs a console error');
+  const reference = policies['_headers'];
+  for (const [name, list] of Object.entries(policies)) {
+    if (!reference) break;
+    const expected = name === 'index.html' ? reference.filter((d) => !isAncestors(d)) : reference;
+    if (JSON.stringify(list) !== JSON.stringify(expected)) add('T-LINT-14', join(root, name), 0, `policy differs from _headers: ${list.filter((d) => !expected.includes(d)).join(' | ')} / missing ${expected.filter((d) => !list.includes(d)).join(' | ')}`);
+  }
+
+  const errorKeys = new Set();
+  const stringsEntry = parsed.get(join(root, 'src', 'ui', 'strings.js'));
+  if (stringsEntry) {
+    visit(stringsEntry.ast, (n) => {
+      if (n.type === 'VariableDeclarator' && n.id.name === 'ERRORS' && n.init && n.init.type === 'ObjectExpression') {
+        for (const prop of n.init.properties) errorKeys.add(prop.key.value !== undefined ? prop.key.value : prop.key.name);
+      }
+    });
+  }
+  if (!errorKeys.size) add('T-LINT-15', join(root, 'src', 'ui', 'strings.js'), 0, 'ERRORS table not found');
+  for (const f of srcJs) {
+    const entry = parsed.get(f);
+    if (!entry) continue;
+    visit(entry.ast, (n) => {
+      if (n.type === 'NewExpression' && n.callee.type === 'Identifier' && n.callee.name === 'QuoinError') {
+        const first = n.arguments[0];
+        if (!first || first.type !== 'Literal' || typeof first.value !== 'string') add('T-LINT-15', f, n.loc.start.line, 'QuoinError code must be a string literal');
+        else if (errorKeys.size && !errorKeys.has(first.value)) add('T-LINT-15', f, n.loc.start.line, `no message for ${first.value}`);
+      }
+    });
+  }
+
+  const fontDir = join(root, 'public', 'fonts');
+  const cssText = all.filter((p) => extname(p) === '.css' && rel(p).startsWith('styles/')).map(read).join('\n');
+  for (const name of readdirSync(fontDir)) {
+    if (!/\.(woff2?|ttf|otf)$/i.test(name)) continue;
+    if (!new RegExp(`src:[^;]*url\\(["']?[^)]*fonts/${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']?\\)`).test(cssText)) add('T-LINT-11', join(fontDir, name), 0, 'font file not referenced by an @font-face');
+  }
+
+  const letterOrDigit = /[\p{L}\p{N}]/u;
+  const stringLeaves = (node) => {
+    if (!node) return [];
+    if (node.type === 'Literal' && typeof node.value === 'string') return [node];
+    if (node.type === 'ConditionalExpression') return [...stringLeaves(node.consequent), ...stringLeaves(node.alternate)];
+    return [];
+  };
+  for (const f of uiFiles) {
+    const entry = parsed.get(f);
+    if (!entry) continue;
+    visitWithAncestors(entry.ast, (n, ancestors) => {
+      if (n.type === 'Property' && !n.computed && n.key && (n.key.name === 'text' || n.key.value === 'text')) {
+        for (const leaf of stringLeaves(n.value)) if (letterOrDigit.test(leaf.value)) add('T-LINT-9', f, leaf.loc.start.line, `text "${leaf.value}"`);
+      }
+      if (n.type === 'ReturnStatement') {
+        const fn = [...ancestors].reverse().find((a) => a.type === 'FunctionDeclaration' || a.type === 'FunctionExpression' || a.type === 'ArrowFunctionExpression');
+        const name = fn && fn.type === 'FunctionDeclaration' && fn.id ? fn.id.name : '';
+        if (/(Label|Text|Display)$/.test(name)) for (const leaf of stringLeaves(n.argument)) if (letterOrDigit.test(leaf.value)) add('T-LINT-9', f, leaf.loc.start.line, `${name} returns "${leaf.value}"`);
+      }
     });
   }
 

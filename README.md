@@ -17,8 +17,10 @@ Quoin opens an Excel `.xlsx` or `.xlsm` file in your browser and shows its Power
 
 **Edit**
 - A code editor for M and VBA with line numbers, syntax highlighting and find (next, previous, match case).
-- Marks edited items, lets you revert each one, and warns before you leave with unsaved edits.
-- Downloads the workbook with only your edits applied. Queries you edited are set to refresh when Excel opens the file, unless you turn that off.
+- Marks edited items, lets you revert each one or everything at once (after a confirmation that names the count), and warns before you leave or open another file with unsaved edits.
+- Download stays disabled until something is edited, then shows the number of changes. *Review changes* lists each changed query or macro as a unified diff.
+- Blocks a download whose macro text cannot be saved (a character outside the project's code page, a line over 1,023 characters, a typed `Attribute` line) and says which line and why.
+- Downloads the workbook with only your edits applied. Where the browser offers a file picker, quoin writes through it, reads the file back and compares it byte for byte before it says the file was saved; elsewhere it downloads the file and says only that. Queries you edited are set to refresh when Excel opens the file, unless you turn that off.
 
 **Run**
 - Runs queries in a worker with a purpose-built M interpreter: lexer, parser, lazy evaluator and a library of 545 entries (511 full, 2 partial, 32 unsupported). The list is in [`docs/m-coverage.md`](docs/m-coverage.md).
@@ -29,13 +31,18 @@ Quoin opens an Excel `.xlsx` or `.xlsm` file in your browser and shows its Power
 **Compare**
 - Checks each result against the table Excel last loaded for that query. It reports a row count mismatch, differing columns, or the number of differing cells, and highlights them.
 - Queries that depend on the clock or on random numbers are marked and are not compared.
+- *View differences* lists the first 200 differing cells with the Excel value and quoin's value. quoin's engine is not Excel's, so a difference is information, not a failure.
 
 **Export**
 - Result: CSV (UTF-8, or UTF-8 with BOM for Excel), TSV, JSON records, or a new `.xlsx`. A guard against formula injection in CSV is on by default.
 - Code: one query as `.m`, all queries as a zip of `.m` files, one module as `.bas` or `.cls`, all modules as a zip, or everything as one zip.
 
+**Print**
+- A print preview with paper (A4, A3, Letter, Legal, Tabloid, Executive), orientation, margins, rows per page, scale, a repeated header, repeated first and last rows, column choice and bands for wide tables, a running head and `Page N of M`, and a choice of result, code, code and result, or the changes as a diff. quoin builds the pages itself, so repeated bottom rows and page numbers work in every browser.
+- What a browser cannot do while printing (printer, tray, duplex, the paper picked in the dialog, the page count) is listed in [`docs/observations.md`](docs/observations.md). Use Save as PDF in the print dialog for a PDF.
+
 **Around it**
-- Light, dark and system themes. Keyboard shortcuts, with a help sheet.
+- Light, dark and system themes. Keyboard shortcuts, with a help sheet (`?`), including open, save, run, print, find and stepping through matches.
 - Installable, and cached for offline use by a service worker.
 - Accessibility checks with axe-core run in the test suite.
 
@@ -43,7 +50,7 @@ Quoin opens an Excel `.xlsx` or `.xlsm` file in your browser and shows its Power
 
 - It never runs VBA. VBA is shown and edited only.
 - It makes no network requests after load. Database and web connectors stop with an error that names the function, and the 32 unsupported library entries do the same.
-- It does not read the data model (`xl/model`). Print preview is not built.
+- It does not read the data model (`xl/model`).
 - It opens `.xlsx`, `.xlsm`, `.xltx` and `.xltm`. It refuses `.xls`, `.xlsb`, OpenDocument, Strict Open XML and password-protected workbooks, each with a specific message.
 - A VBA project that is locked for viewing, uses an unsupported code page, or does not parse cleanly is shown read-only. Editing a signed project removes its signature, after you confirm.
 - It has not been run against real Excel. The checks that need Excel are listed in [`docs/observations.md`](docs/observations.md), and none has been run. Opening an edited file in Excel is the step still to confirm.
@@ -90,7 +97,10 @@ npm run test:unit    node --test, no browser needed
 npm run test:lint    no comments, no remote imports, tokens-only CSS, strings rules
 npm run test:browser Playwright (Chromium)
 npm run fixtures     regenerate the synthetic fixtures
+node scripts/make-icons.mjs   regenerate the PNG icons from the SVG sources
 ```
+
+Visual baselines are in `tests/__visual__` (Chromium on Linux). After a deliberate change to the look, run `npx playwright test tests/e2e/visual.spec.js --update-snapshots` and look at the new images before committing them.
 
 To add a fixture, put the workbook under `tests/fixtures/` and describe where it came from in `tests/fixtures/workbooks/README.md`. Prefer workbooks saved by real Excel.
 
@@ -98,11 +108,11 @@ To add a fixture, put the workbook under `tests/fixtures/` and describe where it
 
 ```
 index.html, sw.js, manifest.webmanifest, _headers
-src/core        pure logic: zip, xml, opc, cfb, ovba, power query, m engine, exports
+src/core        pure logic: zip, xml, opc, cfb, ovba, power query, m engine, exports, diff, print layout
 src/ui          editor, grid, dialogs, strings
 src/app         session, workspace, runner, main
 src/workers     the M worker
-styles          tokens and component styles
+styles          tokens, component styles and print.css
 tests           unit, e2e, a11y, lint, fixtures
 docs            the spec, decisions, observations, generated M coverage, deploying
 examples        a sample workbook

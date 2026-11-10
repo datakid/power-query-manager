@@ -84,7 +84,8 @@ test('a syntax error blocks the run, marks the editor and gives line and column'
   await editor(page).fill('let\n  a = 1,\n  b = \nin b');
   await expect(page.locator('.code-area .tok-err')).toBeVisible();
   await runButton(page).click();
-  await expect(page.locator('.message.error')).toHaveText('Expected an expression. Line 4, column 1.');
+  await expect(page.locator('.message.error')).toContainText('Expected an expression. Line 4, column 1.');
+  await expect(page.locator('.message.error').getByRole('button', { name: 'Go to the error' })).toBeVisible();
 });
 
 test('the timeout stops a run and says so', async ({ page }) => {

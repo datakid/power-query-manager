@@ -23,8 +23,9 @@
 }
 
 .gutter .gutter-err {
-  color: var(--clay-ink);
-  font-weight: 500;
+  color: var(--minium-ink);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--minium);
 }
 
 .code-area {
@@ -48,6 +49,9 @@
   overflow: auto;
   letter-spacing: 0;
   word-spacing: 0;
+  font-variant-ligatures: none;
+  font-kerning: none;
+  font-variant-numeric: normal;
 }
 
 .code-area pre {
@@ -65,62 +69,62 @@
 }
 
 .code-area textarea::selection {
-  background: var(--heather-soft);
+  background: var(--cobalt-soft);
   color: transparent;
 }
 
 .code-area textarea:focus-visible {
-  outline: 2px solid var(--heather);
+  outline: 2px solid var(--cobalt);
   outline-offset: -2px;
 }
 
 .tok-kw {
-  color: var(--heather);
+  color: var(--syn-kw);
   font-weight: 600;
 }
 
 .tok-fn {
-  color: var(--tide-ink);
+  color: var(--syn-fn);
 }
 
 .tok-qid {
-  color: var(--ink-2);
+  color: var(--syn-qid);
 }
 
 .tok-str {
-  color: var(--lichen-ink);
+  color: var(--syn-str);
 }
 
 .tok-num {
-  color: var(--clay-ink);
+  color: var(--syn-num);
 }
 
 .tok-com {
-  color: var(--ink-3);
+  color: var(--syn-com);
   font-style: italic;
 }
 
 .tok-op {
-  color: var(--ink-2);
+  color: var(--syn-op);
 }
 
 .tok-err {
-  text-decoration: underline wavy var(--clay);
+  text-decoration: underline wavy var(--minium);
   text-underline-offset: 3px;
 }
 
 .tok-match {
-  background: var(--flax-soft);
-  outline: 1px solid var(--flax);
+  background: var(--sodium-soft);
+  outline: 1px solid var(--sodium);
 }
 
 .tok-find {
-  background: var(--tide-soft);
+  background: var(--cobalt-soft);
 }
 
 .tok-find-current {
-  background: var(--flax);
-  color: var(--on-flax);
+  background: var(--sodium);
+  color: var(--on-sodium);
 }
 
 .findbar {
@@ -132,16 +136,16 @@
   gap: var(--s-2);
   align-items: center;
   padding: var(--s-2);
-  background: var(--surface);
+  background: var(--raised);
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-overlay);
 }
 
 .findbar input[type="text"] {
   min-height: var(--hit);
   padding: 0 var(--s-2);
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--sunk);
 }

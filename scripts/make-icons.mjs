@@ -1,8 +1,10 @@
 import { chromium } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const mark = readFileSync('public/mark.svg', 'utf8');
-const inner = mark.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<rect[^>]*\/>/, '');
+const GROUND = '#DCE0DA';
+const uri = (file) => `data:image/svg+xml;base64,${Buffer.from(readFileSync(file)).toString('base64')}`;
+const mark = uri('public/mark.svg');
+const maskable = uri('public/icon-maskable.svg');
 
 async function render(browser, size, html) {
   const page = await browser.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
@@ -12,10 +14,16 @@ async function render(browser, size, html) {
   return buf;
 }
 
+const tile = (size, radius) => {
+  const inner = Math.round(size * 0.72);
+  const pad = Math.round((size - inner) / 2);
+  return `<div style="width:${size}px;height:${size}px;background:${GROUND};border-radius:${radius}px;position:relative"><img src="${mark}" width="${inner}" height="${inner}" style="position:absolute;left:${pad}px;top:${pad}px"></div>`;
+};
+
 const browser = await chromium.launch();
-for (const [name, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['apple-touch-icon.png', 180]]) {
-  writeFileSync(`public/${name}`, await render(browser, size, `<img src="data:image/svg+xml;base64,${Buffer.from(mark).toString('base64')}" width="${size}" height="${size}">`));
+for (const size of [192, 512]) {
+  writeFileSync(`public/icon-${size}.png`, await render(browser, size, tile(size, Math.round(size * 0.22))));
+  writeFileSync(`public/icon-maskable-${size}.png`, await render(browser, size, `<img src="${maskable}" width="${size}" height="${size}">`));
 }
-const maskable = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 64 64"><rect width="64" height="64" fill="#5F4D73"/><g transform="translate(6.4 6.4) scale(.8)">${inner}</g></svg>`;
-writeFileSync('public/icon-maskable-512.png', await render(browser, 512, `<img src="data:image/svg+xml;base64,${Buffer.from(maskable).toString('base64')}" width="512" height="512">`));
+writeFileSync('public/apple-touch-icon.png', await render(browser, 180, tile(180, 0)));
 await browser.close();
