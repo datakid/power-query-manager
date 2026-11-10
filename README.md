@@ -107,3 +107,7 @@ tests           unit, e2e, a11y, lint, fixtures
 docs            the spec, decisions, observations, generated M coverage, deploying
 examples        a sample workbook
 ```
+
+## License
+
+MIT. See `LICENSE`. Bundled third-party components keep their own licences.
