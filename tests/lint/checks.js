@@ -165,6 +165,16 @@ export function runAll() {
         const bad = m[2].replace(/var\(--[a-z0-9-]+\)/g, '').replace(/calc\(|\)/g, '').match(/-?\d*\.?\d+px/g);
         if (bad) add('T-LINT-3', f, i + 1, `${m[1]}: ${m[2]}`);
       }
+      if (m && rel(f) !== 'styles/tokens.css' && rel(f) !== 'styles/print.css') {
+        if (/^border(-[a-z]+)*-radius$/.test(m[1])) {
+          const rest = m[2].replace(/var\(--r-[a-z0-9-]+\)/g, '').replace(/50%|\b0\b/g, '').trim();
+          if (rest) add('T-LINT-17', f, i + 1, `${m[1]}: ${m[2]}`);
+        }
+        if (/^(min-)?height$/.test(m[1])) {
+          const px = /^(\d+(?:\.\d+)?)px$/.exec(m[2].trim());
+          if (px && Number(px[1]) >= 24) add('T-LINT-17', f, i + 1, `${m[1]}: ${m[2]}`);
+        }
+      }
       if (rel(f) !== 'styles/tokens.css' && /#[0-9A-Fa-f]{3,8}\b/.test(line) && !/url\(/.test(line)) add('T-LINT-6', f, i + 1, 'hex colour');
       if (rel(f) !== 'styles/tokens.css' && /\brgba?\(/.test(line)) add('T-LINT-6', f, i + 1, 'rgb colour');
     });

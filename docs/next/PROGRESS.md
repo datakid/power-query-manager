@@ -185,3 +185,35 @@
 
 ### Not done on purpose
 - Sticky index column in the grid, current-line highlight in the editor, a "no Excel snapshot" chip, workbook tables offered first in the binding dialog.
+
+## Phase 2R — Glaze palette and 02B refinement
+
+### Done
+- I-R: `styles/tokens.css` rewritten for the Glaze palette (02A) with the 02B size, radius, spacing and type tokens; every stylesheet migrated off the sodium names; `public/favicon.svg`, `mark.svg`, `icon-maskable.svg` replaced and `mark-dark.svg` recoloured; PNG icons regenerated; `tests/a11y/pairs.json` rewritten (T-I-01, T-I-02, T-B-21 green); `tests/unit/glaze.test.js` adds T-I-08 and T-I-09.
+- I-V: panes float on the ground with an 8 px gutter; top bar sits on the ground; readout is a floating bar; buttons, menus, popovers, tooltips, dialogs, inputs, rail rows, grid rows and the print panel use the new tokens; touch targets are 44 px; Compact density is a setting kept in memory (T-V-08).
+- `T-LINT-17` (radius and control heights come from tokens) and `tests/e2e/refinement.spec.js` (T-V-04, T-V-05, T-V-06, T-V-08).
+- Visual baselines regenerated and reviewed by eye.
+
+### Changed expectations
+- T-I-04 baselines: regenerated for the new look.
+- `tests/unit/icons.test.js`: the sodium block colour is now the celadon mark colour; the maskable ground is `--readout`.
+- `aria-valuemin/max/now` on the rail resizer: 220 / 420 / 272.
+
+### Fixed on the way
+- `.main > .editor-wrap` never matched because the editor sits in a `display: contents` host; the editor now fills its grid row.
+- The status bar goes transparent when there is nothing to say, without removing the live region from the accessibility tree.
+
+### Deviations
+- `--celadon-edge` is `#5C9180` (plan `#5E9483` reached 2.92:1 against the ground; the target is 3:1).
+- `--madder` is `#B1594C` (plan `#B5574A` has OKLCH chroma 0.125, above the 0.12 cap in 02A §8).
+- `--t-code-lh` is 22 px, not 1.6: a 21 px line height misaligned the highlight layer at line 1 500 (T-B-12).
+- `pairs.json` exempts only `--line` and `--scrim`; every other token is paired.
+- The legacy size aliases (`--r-sm` … `--r-xl`, `--dur-fast`, `--dur-panel`) stay in `tokens.css` until nothing references them.
+- Density is not persisted: G-3 allows only `quoin.theme` unless D-1 is approved.
+
+### Blocked
+- `T-E-12` (keyboard loop) and `T-P-14b` (PDF export) cannot run in the build sandbox used for this phase; they were not run.
+- The visual baselines were produced with Chromium build 1243, not the build that produced the earlier ones.
+
+### Not done
+- Run in the top bar, the Changes split-button, the palette and the T1–T4 disclosure tiers: these belong to Phase 6 (WB-10 to WB-13).

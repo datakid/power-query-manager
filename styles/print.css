@@ -32,8 +32,10 @@
   left: 0;
   z-index: var(--z-dialog, 40);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   grid-template-rows: minmax(0, 1fr);
+  gap: var(--gutter);
+  padding: var(--gutter);
   background: var(--ground);
   color: var(--ink);
 }
@@ -46,7 +48,7 @@
   grid-column: 1;
   grid-row: 1;
   overflow: auto;
-  background: var(--sunk);
+  background: var(--ground);
   min-width: 0;
 }
 
@@ -68,6 +70,7 @@
   overflow: hidden;
   background: var(--print-paper);
   color: var(--print-ink);
+  box-shadow: var(--shadow-pane);
   border: 1px solid var(--print-rule);
   font-family: var(--font-ui);
   print-color-adjust: exact;
@@ -193,11 +196,12 @@
   grid-row: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--s-3);
+  gap: var(--s-4);
   min-height: 0;
   overflow: auto;
   padding: var(--s-4);
-  border-left: 1px solid var(--line);
+  border-radius: var(--r-3);
+  box-shadow: var(--shadow-pane);
   background: var(--surface);
 }
 
@@ -212,11 +216,10 @@
 .print-panel legend {
   padding: 0;
   margin-bottom: var(--s-1);
-  font-size: var(--t-xs);
+  font-size: var(--t-sm);
+  line-height: var(--t-sm-lh);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .print-panel label {
@@ -232,11 +235,11 @@
 
 .print-panel select,
 .print-panel input[type="number"] {
-  min-height: var(--hit);
-  padding: 0 var(--s-2);
+  min-height: var(--h-ctl);
+  padding: 0 var(--s-3);
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-md);
-  background: var(--sunk);
+  border-radius: var(--r-2);
+  background: var(--raised);
   color: var(--ink);
 }
 
@@ -293,8 +296,6 @@
   .print-panel {
     grid-row: 2;
     max-height: 45vh;
-    border-left: 0;
-    border-top: 1px solid var(--line);
   }
 }
 
@@ -311,6 +312,7 @@
   .print-root.print-temp {
     position: static;
     display: block;
+    padding: 0;
     background: none;
   }
   .print-panel {
@@ -328,6 +330,7 @@
   .print-page {
     margin: 0;
     border: 0;
+    box-shadow: none;
     break-after: page;
     break-inside: avoid;
   }

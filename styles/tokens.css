@@ -119,6 +119,7 @@
   --h-row-sm: 28px;
   --h-grid-row: 30px;
   --h-grid-row-sm: 26px;
+  --h-grid-head: 40px;
   --gutter: 8px;
 
   --font-ui: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -142,7 +143,6 @@
   --dur-1: 90ms;
   --dur-2: 140ms;
   --dur-3: 220ms;
-  --hit: 32px;
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 16px;
@@ -311,8 +311,20 @@
 
 @media (pointer: coarse) {
   :root {
-    --hit: 44px;
+    --h-ctl: 44px;
+    --h-ctl-sm: 36px;
+    --h-row: 44px;
+    --h-row-sm: 40px;
+    --h-grid-row: 40px;
+    --h-grid-row-sm: 36px;
+    --h-grid-head: 44px;
   }
+}
+
+:root.density-compact {
+  --h-row: var(--h-row-sm);
+  --h-ctl: var(--h-ctl-sm);
+  --h-grid-row: var(--h-grid-row-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {

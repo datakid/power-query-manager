@@ -44,6 +44,7 @@ export function openDialog(dialog) {
 
 export function settingsDialog(settings, onChange) {
   const theme = h('select', { id: 'set-theme' }, ...[['system', S.themeSystem], ['light', S.themeLight], ['dark', S.themeDark]].map(([v, l]) => h('option', { value: v, selected: settings.theme === v }, l)));
+  const density = h('select', { id: 'set-density' }, ...[['comfortable', S.densityComfortable], ['compact', S.densityCompact]].map(([v, l]) => h('option', { value: v, selected: settings.density === v }, l)));
   const culture = h('select', { id: 'set-culture' }, ...supportedCultures().map((c) => h('option', { value: c, selected: settings.culture === c }, c)));
   const timeout = h('input', { id: 'set-timeout', type: 'number', min: '1', max: '300', value: String(settings.timeoutS) });
   const rows = h('input', { id: 'set-rows', type: 'number', min: '1000', max: '5000000', step: '1000', value: String(settings.rowCap) });
@@ -55,6 +56,7 @@ export function settingsDialog(settings, onChange) {
     h('h2', { id: 'set-title' }, S.settings),
     h('div', { class: 'form-grid' },
       h('label', { for: 'set-theme' }, S.themeLabel), theme,
+      h('label', { for: 'set-density' }, S.densityLabel), density,
       h('label', { for: 'set-culture' }, S.cultureLabel), culture,
       h('label', { for: 'set-timeout' }, S.timeoutLabel), timeout,
       h('label', { for: 'set-rows' }, S.rowCapLabel), rows,
@@ -64,7 +66,7 @@ export function settingsDialog(settings, onChange) {
     h('div', { class: 'dialog-actions' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: () => {
       const t = Math.max(1, Math.min(300, Number(timeout.value) || 30));
       const r = Math.max(1000, Math.min(5000000, Number(rows.value) || 1000000));
-      onChange({ theme: theme.value, culture: culture.value, timeoutS: t, rowCap: r, csvGuard: guard.checked, useUpstream: upstream.checked });
+      onChange({ theme: theme.value, density: density.value, culture: culture.value, timeoutS: t, rowCap: r, csvGuard: guard.checked, useUpstream: upstream.checked });
       dlg.close();
     } }, S.save), h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, S.close))
   );

@@ -46,12 +46,12 @@ export class Workspace {
   }
 
   resizer() {
-    const handle = h('div', { class: 'rail-resizer', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': S.resizeRail, 'aria-valuemin': '200', 'aria-valuemax': '360', 'aria-valuenow': '248', tabindex: '0' });
+    const handle = h('div', { class: 'rail-resizer', role: 'separator', 'aria-orientation': 'vertical', 'aria-label': S.resizeRail, 'aria-valuemin': '220', 'aria-valuemax': '420', 'aria-valuenow': '272', tabindex: '0' });
     this.rail.append(handle);
     let startX = 0;
-    let startW = 248;
+    let startW = 272;
     const move = (ev) => {
-      const w = Math.max(200, Math.min(360, startW + ev.clientX - startX));
+      const w = Math.max(220, Math.min(420, startW + ev.clientX - startX));
       this.root.style.setProperty('--rail-width', `${w}px`);
       handle.setAttribute('aria-valuenow', String(Math.round(w)));
     };
@@ -67,7 +67,7 @@ export class Workspace {
     });
     handle.addEventListener('keydown', (ev) => {
       if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
-        const w = Math.max(200, Math.min(360, this.rail.getBoundingClientRect().width + (ev.key === 'ArrowRight' ? 16 : -16)));
+        const w = Math.max(220, Math.min(420, this.rail.getBoundingClientRect().width + (ev.key === 'ArrowRight' ? 16 : -16)));
         this.root.style.setProperty('--rail-width', `${w}px`);
         handle.setAttribute('aria-valuenow', String(Math.round(w)));
         ev.preventDefault();
@@ -179,6 +179,7 @@ export class Workspace {
       const isFn = q ? this.isFunction(q) : false;
       const li = h('li', { role: 'treeitem', 'aria-selected': String(!!this.item && this.item.type === item.type && this.item.name === item.name), 'data-type': item.type, 'data-name': item.name, tabindex: '-1' },
         h('span', { class: 'tree-item' },
+          item.type === 'module' ? h('span', { class: 'dot-module', 'aria-hidden': 'true' }) : null,
           q ? (q.load.kind === 'connection' ? h('span', { class: 'dot-conn', title: S.connectionOnly }) : h('span', { class: 'dot-loaded', title: loadLabel(q.load) })) : null,
           h('span', { class: 'name' }, item.name),
           isFn ? h('span', { class: 'badge-fn', 'aria-hidden': 'true' }, S.functionBadge) : null,

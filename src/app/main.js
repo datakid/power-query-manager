@@ -10,7 +10,7 @@ import { Workspace } from './workspace.js';
 import { queryFile, moduleFile, zipFiles, sanitizeFileName } from '../core/export/files.js';
 import { QuoinError } from '../core/errors.js';
 
-const DEFAULTS = { theme: 'system', culture: 'en-US', timeoutS: 30, rowCap: 1000000, csvGuard: true, useUpstream: false };
+const DEFAULTS = { theme: 'system', density: 'comfortable', culture: 'en-US', timeoutS: 30, rowCap: 1000000, csvGuard: true, useUpstream: false };
 
 function loadTheme() {
   try {
@@ -19,6 +19,10 @@ function loadTheme() {
   } catch {
     return 'system';
   }
+}
+
+function applyDensity(d) {
+  document.documentElement.classList.toggle('density-compact', d === 'compact');
 }
 
 function applyTheme(t) {
@@ -101,6 +105,7 @@ class Status {
   schedule() {
     const { items, alert } = this.describe();
     if (alert !== this.alertEl.textContent) this.alertEl.textContent = alert;
+    this.syncIdle(items, alert);
     if (JSON.stringify(items) === this.sig) return;
     const wait = STATUS_INTERVAL_MS - (performance.now() - this.lastAt);
     if (wait <= 0) this.flush();
@@ -125,6 +130,12 @@ class Status {
       else if (it.dot) this.el.append(h('span', { class: `chip ${it.dot}` }, h('span', { class: `status-dot ${it.dot}` }), it.text.replace(/^ · /, '')));
       else this.el.append(h('span', null, it.text));
     }
+    this.syncIdle(items, alert);
+  }
+
+  syncIdle(items, alert) {
+    const idle = !alert && items.every((it) => it.spacer || !it.text || !it.text.trim());
+    if (this.el.parentElement) this.el.parentElement.classList.toggle('is-idle', idle);
   }
 }
 
@@ -372,6 +383,8 @@ export class App {
     settingsDialog(this.settings, (next) => {
       Object.assign(this.settings, next);
       applyTheme(next.theme);
+      applyDensity(next.density);
+      if (this.ws) this.ws.grid.remeasure();
       this.status.set({ culture: next.culture });
       if (this.ws) {
         this.ws.settings = this.settings;

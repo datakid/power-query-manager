@@ -2,8 +2,17 @@ import { h, clear, placeBelow, onOutside } from './dom.js';
 import { S } from './strings.js';
 import { formatsFor } from './formats.js';
 
-const ROW_H = 28;
-const HEAD_H = 44;
+let ROW_H = 30;
+let HEAD_H = 40;
+
+function syncMetrics() {
+  const cs = getComputedStyle(document.documentElement);
+  const row = parseFloat(cs.getPropertyValue('--h-grid-row'));
+  const head = parseFloat(cs.getPropertyValue('--h-grid-head'));
+  if (row > 0) ROW_H = row;
+  if (head > 0) HEAD_H = head;
+}
+
 const INDEX_W = 56;
 const COL_VIRTUAL_AFTER = 50;
 const PAGE = 200;
@@ -109,12 +118,24 @@ export class Grid {
     this.integerFormat = f.integer;
   }
 
+  remeasure() {
+    if (!this.columns.length) return;
+    syncMetrics();
+    const shown = this.rowCount === 0 ? 1 : this.rowCount;
+    this.sizer.style.height = `${HEAD_H + shown * ROW_H}px`;
+    this.head.style.height = `${HEAD_H}px`;
+    this.body.style.top = `${HEAD_H}px`;
+    this.body.style.height = `${shown * ROW_H}px`;
+    this.repaintAll();
+  }
+
   rerender() {
     if (!this.columns.length) return;
     this.repaintAll();
   }
 
   setData({ columns, rowCount, rows = null, loader = null, diffs = null }) {
+    syncMetrics();
     this.columns = columns;
     this.rowCount = rowCount;
     this.cache = new Map();

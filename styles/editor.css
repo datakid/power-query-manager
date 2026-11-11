@@ -4,21 +4,21 @@
   grid-template-columns: auto minmax(0, 1fr);
   min-height: 0;
   background: var(--surface);
-  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-3) var(--r-3);
   overflow: hidden;
 }
 
 .gutter {
-  background: var(--sunk);
+  background: transparent;
   color: var(--ink-3);
   font-family: var(--font-code);
   font-size: var(--t-code);
   line-height: var(--t-code-lh);
   text-align: right;
-  padding: var(--s-3) var(--s-2);
+  padding: var(--s-3) var(--s-2) var(--s-3) var(--s-4);
   overflow: hidden;
   user-select: none;
-  min-width: 48px;
+  min-width: var(--s-7);
   white-space: pre;
 }
 
@@ -143,7 +143,7 @@
 }
 
 .findbar input[type="text"] {
-  min-height: var(--hit);
+  min-height: var(--h-ctl);
   padding: 0 var(--s-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
