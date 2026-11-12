@@ -7,6 +7,17 @@ const STATUS_ERRORS = {
 
 export const S = {
   appName: 'quoin',
+  stepNames: {
+    filter: 'Filtered Rows',
+    sort: 'Sorted Rows',
+    removeColumns: 'Removed Columns',
+    keepColumns: 'Removed Other Columns',
+    renameColumn: 'Renamed Columns',
+    changeType: 'Changed Type',
+    removeDuplicates: 'Removed Duplicates',
+    keepFirstRows: 'Kept First Rows',
+    replaceValue: 'Replaced Value'
+  },
   tagline: 'The working parts of a workbook.',
   emptyPrompt: 'Drop an .xlsx or .xlsm file, or choose one.',
   chooseFile: 'Choose file',
