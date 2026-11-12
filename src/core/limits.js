@@ -13,7 +13,9 @@ export const DEFAULT_LIMITS = Object.freeze({
   printRowLimit: 20000,
   printRowRefuse: 200000,
   maxModuleBytes: 4 * 1024 * 1024,
-  maxVbaLineChars: 1023
+  maxVbaLineChars: 1023,
+  maxStoredResults: 32,
+  maxStoredCells: 6000000
 });
 
 export function withLimits(overrides) {
