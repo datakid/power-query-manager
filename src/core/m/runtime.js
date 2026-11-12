@@ -14,6 +14,7 @@ export class NeedBinding extends QuoinStop {
     super('m.needBinding', { kind, key });
     this.kind = kind;
     this.key = key;
+    this.retryable = true;
   }
 }
 

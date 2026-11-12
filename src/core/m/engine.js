@@ -57,10 +57,10 @@ function setupRuntime(opts) {
   RT.useUpstream = !!opts.useUpstream;
 }
 
-function evaluate(opts) {
+function prepare(opts) {
   setupRuntime(opts);
   const parsed = parseSection(opts.sectionText);
-  if (parsed.error) return { status: 'parse-error', error: parsed.error };
+  if (parsed.error) return { failure: { status: 'parse-error', error: parsed.error } };
   const memberMap = new Map();
   const ctx = {
     resolveGlobal(name) {
@@ -94,6 +94,13 @@ function evaluate(opts) {
     if (env instanceof MRecord) env.names.forEach((n, i) => scopeEnv.vars.set(n, env.entries[i]));
     return compile(ast, ctx)(scopeEnv);
   };
+  return { parsed, memberMap, ctx, root };
+}
+
+function evaluate(opts) {
+  const prep = prepare(opts);
+  if (prep.failure) return prep.failure;
+  const { parsed, memberMap, ctx, root } = prep;
   const member = parsed.members.find((m) => m.name === opts.queryName);
   const steps = member && member.ast.t === 'Let' ? member.ast.bindings.map((b) => b.name) : [];
   if (opts.step && member && member.ast.t === 'Let' && steps.includes(opts.step)) {
@@ -111,6 +118,112 @@ function sharedRecord(memberMap, membersOnly) {
   const libNames = membersOnly ? [] : [...LIB.keys()].filter((n) => !memberMap.has(n));
   const all = [...names, ...libNames];
   return new MRecord(all, all.map((n) => new Thunk(() => (memberMap.has(n) ? cell(force(memberMap.get(n))) : LIB.get(n) instanceof Thunk && LIB.get(n).dynamic ? LIB.get(n).dynamic() : LIB.get(n)))));
+}
+
+function describeError(e) {
+  return { reason: e.reason, message: e.mMessage, detail: describeDetail(e.detail) };
+}
+
+function shapeOf(value) {
+  if (value instanceof MTable) return { rowCount: value.rowCount, columns: value.columns.slice() };
+  return {};
+}
+
+export function evaluateSteps(opts) {
+  const started = Date.now();
+  try {
+    const prep = prepare(opts);
+    if (prep.failure) return prep.failure;
+    const { parsed, memberMap, ctx, root } = prep;
+    const member = parsed.members.find((m) => m.name === opts.queryName);
+    if (!member) return { status: 'error', error: { reason: 'Quoin.Query', message: `The query '${opts.queryName}' was not found.`, detail: null } };
+    if (member.ast.t !== 'Let') {
+      const r = runOnce(opts);
+      return { ...r, steps: [], final: r };
+    }
+    const names = member.ast.bindings.map((b) => b.name);
+    const run = compile({ ...member.ast, body: { t: 'StepRecord', names, body: member.ast.body } }, ctx);
+    const record = run(root);
+    const failures = new Map();
+    const steps = [];
+    const guard = (entry, label) => {
+      const t0 = Date.now();
+      try {
+        const value = cell(force(entry));
+        return { name: label, status: 'ok', value, durationMs: Date.now() - t0, ...shapeOf(value) };
+      } catch (e) {
+        if (e instanceof NeedBinding) throw e;
+        if (e instanceof QuoinStop) return { name: label, status: 'stopped', code: e.code, detail: e.detail, durationMs: Date.now() - t0 };
+        if (e instanceof MError) {
+          const cause = [...failures].find(([, err]) => err === e);
+          if (cause) return { name: label, status: 'skipped', cause: cause[0], durationMs: Date.now() - t0 };
+          failures.set(label, e);
+          return { name: label, status: 'error', error: describeError(e), durationMs: Date.now() - t0 };
+        }
+        if (e instanceof RangeError && /call stack/i.test(e.message)) return { name: label, status: 'stopped', code: 'm.depth', detail: null, durationMs: Date.now() - t0 };
+        throw e;
+      }
+    };
+    names.forEach((n, i) => steps.push(guard(record.entries[i], n)));
+    const final = guard(record.entries[names.length], '\u0000body');
+    delete final.name;
+    return { status: 'ok', steps, final, flags: [...RT.flags], isFunction: false, durationMs: Date.now() - started };
+  } catch (e) {
+    if (e instanceof NeedBinding) return { status: 'need-binding', kind: e.kind, key: e.key };
+    throw e;
+  }
+}
+
+export async function* evaluateMany(opts, names) {
+  const prep = prepare(opts);
+  if (prep.failure) {
+    yield { name: null, ...prep.failure };
+    return;
+  }
+  const { parsed, memberMap } = prep;
+  const limits = RT.limits;
+  const functions = new Set(parsed.members.filter((m) => isFunctionAst(m.ast)).map((m) => m.name));
+  for (const name of names) {
+    if (!memberMap.has(name)) {
+      yield { name, status: 'error', error: { reason: 'Quoin.Query', message: `The query '${name}' was not found.`, detail: null }, flags: [], durationMs: 0 };
+      continue;
+    }
+    if (functions.has(name)) {
+      yield { name, status: 'skipped', flags: [], durationMs: 0 };
+      continue;
+    }
+    for (let round = 0; round < 50; round++) {
+      RT.deadline = Date.now() + limits.timeoutMs;
+      RT.flags = new Set();
+      RT.counter = 0;
+      RT.depth = 0;
+      const t0 = Date.now();
+      try {
+        const value = cell(force(memberMap.get(name)));
+        const flags = [...RT.flags];
+        let compare = null;
+        const cache = opts.compareTo instanceof Map ? opts.compareTo.get(name) : null;
+        if (cache && value instanceof MTable) compare = flags.includes('time-dependent') ? { disabled: 'time' } : flags.includes('non-deterministic') ? { disabled: 'random' } : compareWithCache(value, cache);
+        yield { name, status: 'ok', value, flags, compare, durationMs: Date.now() - t0, ...shapeOf(value) };
+        break;
+      } catch (e) {
+        if (e instanceof NeedBinding) {
+          const binding = yield { name, status: 'need-binding', kind: e.kind, key: e.key };
+          if (!binding) {
+            yield { name, status: 'error', error: { reason: 'DataSource.Error', message: `No file was provided for ${e.key}.`, detail: e.key }, flags: [], durationMs: Date.now() - t0 };
+            break;
+          }
+          RT.bindings.set(e.key, binding);
+          continue;
+        }
+        if (e instanceof QuoinStop) yield { name, status: 'stopped', code: e.code, detail: e.detail, flags: [...RT.flags], durationMs: Date.now() - t0 };
+        else if (e instanceof MError) yield { name, status: 'error', error: describeError(e), flags: [...RT.flags], durationMs: Date.now() - t0 };
+        else if (e instanceof RangeError && /call stack/i.test(e.message)) yield { name, status: 'stopped', code: 'm.depth', detail: null, flags: [...RT.flags], durationMs: Date.now() - t0 };
+        else throw e;
+        break;
+      }
+    }
+  }
 }
 
 export function runOnce(opts) {

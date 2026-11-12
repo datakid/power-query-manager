@@ -337,6 +337,18 @@ export function compile(node, ctx) {
       const name = node.name;
       return () => ctx.resolveMember(name);
     }
+    case 'StepRecord': {
+      const body = node.body ? c(node.body) : null;
+      return (env) => {
+        const entries = node.names.map((n) => env.vars.get(n));
+        const names = node.names.slice();
+        if (body) {
+          names.push('\u0000body');
+          entries.push(new Thunk(() => body(env)));
+        }
+        return new MRecord(names, entries);
+      };
+    }
     case 'Let': {
       const binds = node.bindings.map((b) => ({ name: b.name, run: c(b.expr) }));
       const body = c(node.body);

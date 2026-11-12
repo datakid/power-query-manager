@@ -31,6 +31,10 @@ export class Thunk {
       this.fn = null;
       return this.value;
     } catch (e) {
+      if (e && e.retryable) {
+        this.state = 0;
+        throw e;
+      }
       this.state = 3;
       this.value = e;
       this.fn = null;
