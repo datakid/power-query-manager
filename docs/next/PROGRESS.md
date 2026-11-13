@@ -248,3 +248,9 @@
 - The orchestrator is not wired into the app yet: the Run split-button, the navigator selection bar, the Queue tab and removing the coupling where selecting an item cancels a run all belong to WB-10 to WB-16.
 - Fixtures `many-queries.xlsx`, `macro-links.xlsm` and `cp932.xlsm` are not generated; the WB-9 e2e (run all on `many-queries.xlsx`, edit a staging query, run stale) needs `many-queries.xlsx`.
 - WB-10 to WB-28 (shell, navigator, tabs, palette, steps panel, result dock, graph, problems, sources, editor intelligence, VBA workbench, proof).
+
+### WB-13 (partial, done ahead of the shell)
+- `src/app/commands.js` and `app-commands.js`: one command registry with ids, shortcuts, `enabled()` reasons and surfaces; browser-reserved shortcuts are refused at registration; the key handler in `main.js` and the shortcut sheet are both generated from it (T-LINT-16, T-WB-13 unit).
+- `src/ui/wb/palette.js`: Ctrl/Cmd+K and Ctrl/Cmd+Shift+P open a combobox over queries, modules and commands, with `>` commands, `@` procedures, `#` steps of the open query and `:` go to line; disabled commands show their reason (T-WB-13 e2e).
+- Changed expectations: the shortcut sheet is now built from the registry (its rows and wording changed); the top bar gains a Search button; all 40 visual baselines were refreshed with `--update-snapshots=all` because the earlier updates had stayed inside the 0.2 % tolerance and kept stale images.
+- Not done: the Run modes (`run stale`, `run all`) are not commands yet because the orchestrator is not wired to the UI, so `>run stale` from the acceptance story does not exist yet.

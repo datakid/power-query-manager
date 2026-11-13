@@ -1,5 +1,5 @@
 {
-  "version": "f9f8e1b9b641b50b",
+  "version": "148bbf84c0422621",
   "files": [
     "./",
     "index.html",
@@ -21,7 +21,9 @@
     "public/icon-maskable.svg",
     "public/mark-dark.svg",
     "public/mark.svg",
+    "src/app/app-commands.js",
     "src/app/bootstrap.js",
+    "src/app/commands.js",
     "src/app/file-save.js",
     "src/app/main.js",
     "src/app/orchestrator.js",
@@ -112,6 +114,7 @@
     "src/ui/print-preview.js",
     "src/ui/print-render.js",
     "src/ui/strings.js",
+    "src/ui/wb/palette.js",
     "src/workers/m-worker.js",
     "styles/app.css",
     "styles/editor.css",

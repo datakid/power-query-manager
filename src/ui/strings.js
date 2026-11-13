@@ -265,18 +265,34 @@ export const S = {
   folderAria: (name) => name,
   matchCount: (i, n) => `${i}/${n}`,
   fileCounts: (q, m) => `${q} ${q === 1 ? 'query' : 'queries'} · ${m} ${m === 1 ? 'module' : 'modules'}`,
-  shortcutRows: [
-    ['Ctrl/Cmd+O', 'Choose file'],
-    ['Ctrl/Cmd+Enter', 'Run the current query'],
-    ['Esc', 'Cancel the run, or close a popover'],
-    ['Ctrl/Cmd+S', 'Open the Download popover'],
-    ['Ctrl/Cmd+Shift+E', 'Open the Export menu'],
-    ['Alt+Up / Alt+Down', 'Previous or next item in the rail'],
-    ['Ctrl/Cmd+P', 'Print preview'],
+  cmd: {
+    openFile: 'Choose file',
+    run: 'Run the current query',
+    cancel: 'Cancel the run, or close a popover',
+    download: 'Open the Download popover',
+    export: 'Open the Export menu',
+    prevItem: 'Previous item in the rail',
+    nextItem: 'Next item in the rail',
+    print: 'Print preview',
+    shortcuts: 'Show the shortcut sheet',
+    settings: 'Open settings',
+    palette: 'Search everything and run commands'
+  },
+  palette: {
+    label: 'Search and commands',
+    placeholder: 'Search queries, modules, steps and commands',
+    trigger: 'Search',
+    kbd: 'Ctrl K',
+    empty: 'Nothing matches.',
+    group: { queries: 'Queries', modules: 'Macros', commands: 'Commands', procedures: 'Procedures', steps: 'Steps', lines: 'Go to line' },
+    hint: 'Type > for commands, @ for procedures, # for steps, : for a line',
+    count: (n) => (n === 1 ? '1 result' : `${n} results`),
+    disabled: (why) => `Not available: ${why}`
+  },
+  shortcutNotes: [
     ['Ctrl/Cmd+F', 'Find in the editor'],
     ['F3 / Shift+F3', 'Next or previous match'],
-    ['Ctrl/Cmd+Z / Shift+Ctrl/Cmd+Z', 'Undo or redo in the editor'],
-    ['?', 'This sheet']
+    ['Ctrl/Cmd+Z / Shift+Ctrl/Cmd+Z', 'Undo or redo in the editor']
   ]
 };
 

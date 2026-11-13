@@ -1184,3 +1184,102 @@ dialog.wide {
   border: 1px solid var(--line);
   color: var(--ink);
 }
+
+dialog.palette {
+  margin: 12vh auto auto;
+  padding: 0;
+  width: min(600px, calc(100vw - var(--s-5)));
+  max-width: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: 70vh;
+  overflow: hidden;
+}
+
+.palette-input {
+  min-height: var(--h-bar);
+  padding: 0 var(--s-5);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--t-lg);
+  line-height: var(--t-lg-lh);
+}
+
+.palette-input:focus-visible {
+  outline-offset: -2px;
+}
+
+.palette-list {
+  margin: 0;
+  padding: var(--s-2);
+  list-style: none;
+  overflow: auto;
+}
+
+.palette-group {
+  padding: var(--s-2) var(--s-3) var(--s-1);
+  font-size: var(--t-xs);
+  line-height: var(--t-xs-lh);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: var(--h-row);
+  padding: 0 var(--s-3);
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+
+.palette-row.is-active {
+  background: var(--slate-soft);
+}
+
+.palette-row[aria-disabled="true"] {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.palette-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-text mark {
+  background: none;
+  color: var(--slate-ink);
+  font-weight: 700;
+}
+
+.palette-hint,
+.palette-why {
+  flex: none;
+}
+
+.palette-empty {
+  padding: var(--s-4) var(--s-3);
+}
+
+.palette-status {
+  padding: var(--s-2) var(--s-5) var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+.palette-button .kbd {
+  margin-left: var(--s-2);
+  padding: 0 var(--s-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-1);
+  color: var(--ink-3);
+  font-family: var(--font-code);
+  font-size: var(--t-2xs);
+}

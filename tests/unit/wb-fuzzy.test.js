@@ -80,3 +80,8 @@ test('T-WB-05: ten thousand items are ranked in under 30 ms', () => {
   assert.ok(r.length === 50);
   assert.ok(ms < 30, `took ${ms.toFixed(1)} ms`);
 });
+
+test('T-WB-05: an empty query keeps the original order', () => {
+  assert.deepEqual(rank('', ['ccc', 'a', 'bb']).map((r) => r.item), ['ccc', 'a', 'bb']);
+  assert.equal(rank('', ['x', 'y', 'z'], (v) => v, 2).length, 2);
+});

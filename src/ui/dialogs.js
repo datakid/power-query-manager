@@ -73,12 +73,12 @@ export function settingsDialog(settings, onChange) {
   return openDialog(dlg);
 }
 
-export function shortcutsDialog() {
+export function shortcutsDialog(rows = S.shortcutNotes) {
   const dlg = h(
     'dialog',
     { 'aria-labelledby': 'sc-title' },
     h('h2', { id: 'sc-title' }, S.shortcuts),
-    h('dl', { class: 'kbd-list' }, ...S.shortcutRows.flatMap(([k, d]) => [h('dt', null, k), h('dd', null, d)])),
+    h('dl', { class: 'kbd-list' }, ...rows.flatMap(([k, d]) => [h('dt', null, k), h('dd', null, d)])),
     h('div', { class: 'dialog-actions' }, h('button', { class: 'btn', type: 'button', onclick: () => dlg.close() }, S.close))
   );
   return openDialog(dlg);

@@ -4,6 +4,10 @@ import { formatsFor } from '../ui/formats.js';
 import { markImg, syncMarks, watchMarks } from '../ui/mark.js';
 import { hasFilePicker, writeThroughPicker } from './file-save.js';
 import { openPrintPreview, printWithoutPreview } from '../ui/print-preview.js';
+import { buildRegistry } from './app-commands.js';
+import { openPalette } from '../ui/wb/palette.js';
+import { outlineModule } from '../core/vba/outline.js';
+import { stepsOf } from '../core/wb/steps.js';
 import { settingsDialog, shortcutsDialog, detailsDialog, changesDialog, confirmDialog, menu, popover } from '../ui/dialogs.js';
 import { Session } from './session.js';
 import { Workspace } from './workspace.js';
@@ -150,10 +154,12 @@ export class App {
   }
 
   build() {
+    this.registry = buildRegistry(this);
     this.fileHead = h('span', { class: 'fn-head' });
     this.fileTail = h('span', { class: 'fn-tail' });
     this.fileBtn = h('button', { class: 'file-name', type: 'button', hidden: true, onclick: () => this.showDetails() }, this.fileHead, this.fileTail);
     this.fileMeta = h('span', { class: 'file-meta item-meta', hidden: true });
+    this.paletteBtn = h('button', { class: 'btn btn-quiet palette-button', type: 'button', hidden: true, 'aria-keyshortcuts': 'Control+K Meta+K', onclick: () => this.openPalette() }, S.palette.trigger, h('span', { class: 'kbd', 'aria-hidden': 'true' }, S.palette.kbd));
     this.printBtn = h('button', { class: 'btn print-button', type: 'button', hidden: true, onclick: () => this.openPrint() }, S.print);
     this.exportBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'menu', 'aria-expanded': false, onclick: () => this.openExport() }, S.export);
     this.settingsBtn = h('button', { class: 'btn btn-quiet', type: 'button', 'aria-label': S.settings, title: S.settings, onclick: () => this.openSettings() }, '⚙');
@@ -161,7 +167,7 @@ export class App {
     this.downloadBtn = h('button', { class: 'btn', type: 'button', hidden: true, 'aria-haspopup': 'dialog', 'aria-expanded': false, 'aria-disabled': true, title: S.downloadNone, onclick: () => this.openDownload() }, S.download, this.downloadCount);
     this.topbar = h('header', { class: 'topbar' },
       h('h1', { class: 'brand' }, markImg('brand-mark', 28), h('span', { class: 'wordmark' }, S.appName)),
-      this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.printBtn, this.exportBtn, this.settingsBtn, this.downloadBtn);
+      this.fileBtn, this.fileMeta, h('span', { class: 'spacer' }), this.paletteBtn, this.printBtn, this.exportBtn, this.settingsBtn, this.downloadBtn);
     this.input = h('input', { type: 'file', class: 'sr-only', accept: '.xlsx,.xlsm,.xltx,.xltm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', tabindex: '-1', 'aria-label': S.chooseFile });
     this.input.addEventListener('change', () => {
       if (this.input.files && this.input.files[0]) this.openFile(this.input.files[0]);
@@ -184,6 +190,7 @@ export class App {
     this.ws = null;
     this.fileBtn.hidden = true;
     this.fileMeta.hidden = true;
+    this.paletteBtn.hidden = true;
     this.printBtn.hidden = true;
     this.exportBtn.hidden = true;
     this.downloadBtn.hidden = true;
@@ -285,35 +292,54 @@ export class App {
   onKey(ev) {
     if (this.printView) return;
     if (ev.key !== 'Escape' && document.querySelector('dialog[open]')) return;
-    const mod = ev.ctrlKey || ev.metaKey;
-    const key = ev.key.toLowerCase();
-    if (mod && key === 'o') {
-      ev.preventDefault();
-      this.input.click();
-    } else if (mod && key === 'enter') {
-      if (this.ws) {
-        ev.preventDefault();
-        this.ws.run();
+    const cmd = this.registry.dispatch(ev, this);
+    if (!cmd) return;
+    const r = cmd.run(this);
+    if (cmd.id !== 'shortcuts' && r !== false) ev.preventDefault();
+  }
+
+  openShortcuts() {
+    shortcutsDialog([...this.registry.sheet(), ...S.shortcutNotes]);
+  }
+
+  openPalette(initial = '') {
+    const ws = this.ws;
+    const lineOf = (text, at) => text.slice(0, at).split(/\r\n|\r|\n/).length;
+    let procs = null;
+    const source = {
+      items: () => (ws ? ws.items() : []),
+      commands: () => this.registry.list(this),
+      procedures: () => {
+        if (procs) return procs;
+        procs = [];
+        if (ws) {
+          for (const m of this.session.modules) {
+            const kind = m.kind === 'standard' || m.kind === 'class' ? m.kind : 'document';
+            for (const p of outlineModule(this.session.textOf({ type: 'module', name: m.name }), { moduleKind: kind }).procedures) procs.push({ name: p.name, module: m.name, line: p.startLine });
+          }
+        }
+        return procs;
+      },
+      steps: () => {
+        if (!ws || !ws.item || ws.item.type !== 'query') return [];
+        const text = ws.editor.getText();
+        return stepsOf(text, 0).steps.map((st) => ({ name: st.name, line: lineOf(text, st.span.start) }));
       }
-    } else if (mod && key === 's') {
-      ev.preventDefault();
-      if (this.ws) this.openDownload();
-    } else if (mod && !ev.shiftKey && key === 'p') {
-      ev.preventDefault();
-      if (this.ws) this.openPrint();
-    } else if (mod && ev.shiftKey && key === 'e') {
-      ev.preventDefault();
-      if (this.ws) this.openExport();
-    } else if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
-      if (this.ws) {
-        ev.preventDefault();
-        this.ws.step(ev.key === 'ArrowDown' ? 1 : -1);
-      }
-    } else if (ev.key === 'Escape') {
-      if (this.ws && this.ws.cancel()) ev.preventDefault();
-    } else if (ev.key === '?' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName)) {
-      shortcutsDialog();
-    }
+    };
+    openPalette(source, {
+      initial,
+      onItem: (item) => ws.select(item),
+      onCommand: (c) => {
+        const cmd = this.registry.get(c.id);
+        if (cmd && cmd.run) cmd.run(this);
+      },
+      onProcedure: (p) => {
+        ws.select({ type: 'module', name: p.module });
+        ws.editor.goto(p.line, 1);
+      },
+      onStep: (st) => ws.editor.goto(st.line, 1),
+      onLine: (n) => ws.editor.goto(n, 1)
+    });
   }
 
   async openFile(file, handlePromise) {
@@ -350,6 +376,7 @@ export class App {
     this.fileBtn.hidden = false;
     this.fileMeta.textContent = S.fileMeta(file.size);
     this.fileMeta.hidden = false;
+    this.paletteBtn.hidden = false;
     this.printBtn.hidden = false;
     this.exportBtn.hidden = false;
     this.downloadBtn.hidden = false;

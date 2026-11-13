@@ -134,6 +134,13 @@ export function match(query, text) {
 
 export function rank(query, items, key = (x) => x, limit = Infinity) {
   const out = [];
+  if (!query) {
+    items.forEach((item, index) => {
+      const text = key(item);
+      if (typeof text === 'string') out.push({ item, index, score: 0, ranges: [], length: text.length });
+    });
+    return out.length > limit ? out.slice(0, limit) : out;
+  }
   items.forEach((item, index) => {
     const text = key(item);
     if (typeof text !== 'string') return;
