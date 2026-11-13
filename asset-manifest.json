@@ -1,5 +1,5 @@
 {
-  "version": "e257cbc1b75815ea",
+  "version": "f9f8e1b9b641b50b",
   "files": [
     "./",
     "index.html",
@@ -24,6 +24,7 @@
     "src/app/bootstrap.js",
     "src/app/file-save.js",
     "src/app/main.js",
+    "src/app/orchestrator.js",
     "src/app/runner.js",
     "src/app/session.js",
     "src/app/theme-init.js",
@@ -93,6 +94,8 @@
     "src/core/wb/let-edit.js",
     "src/core/wb/m-gen.js",
     "src/core/wb/result-store.js",
+    "src/core/wb/run-plan.js",
+    "src/core/wb/status.js",
     "src/core/wb/step-kinds.js",
     "src/core/wb/steps.js",
     "src/core/workbook.js",

@@ -164,10 +164,15 @@ export function evaluateSteps(opts) {
         throw e;
       }
     };
-    names.forEach((n, i) => steps.push(guard(record.entries[i], n)));
-    const final = guard(record.entries[names.length], '\u0000body');
-    delete final.name;
-    return { status: 'ok', steps, final, flags: [...RT.flags], isFunction: false, durationMs: Date.now() - started };
+    const upTo = opts.upTo ? names.indexOf(opts.upTo) : -1;
+    const last = upTo >= 0 ? upTo : names.length - 1;
+    for (let i = 0; i <= last; i++) steps.push(guard(record.entries[i], names[i]));
+    let final = null;
+    if (upTo < 0) {
+      final = guard(record.entries[names.length], '\u0000body');
+      delete final.name;
+    }
+    return { status: 'ok', steps, final, partial: upTo >= 0, flags: [...RT.flags], isFunction: false, durationMs: Date.now() - started };
   } catch (e) {
     if (e instanceof NeedBinding) return { status: 'need-binding', kind: e.kind, key: e.key };
     throw e;

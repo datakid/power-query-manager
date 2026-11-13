@@ -27,6 +27,7 @@ function baseOptions(m) {
     culture: m.culture,
     limits: m.limits,
     useUpstream: m.useUpstream,
+    upTo: m.upTo || null,
     compareTo: m.compareTo,
     previewRows: m.previewRows || 200,
     now: m.now,
@@ -98,10 +99,12 @@ async function runSteps(m) {
       post({ type: 'step-result', id: m.id, resultId, result, ...rest, name });
       return resultId;
     };
-    for (const st of r.steps) send(st, st.name);
-    const finalId = send({ ...r.final }, null);
-    lastId = finalId;
-    post({ type: 'done', id: m.id, status: 'ok', flags: r.flags, finalResultId: finalId, durationMs: r.durationMs });
+    let finalId = null;
+    let lastStepId = null;
+    for (const st of r.steps) lastStepId = send(st, st.name);
+    if (r.final) finalId = send({ ...r.final }, null);
+    lastId = finalId || lastStepId || lastId;
+    post({ type: 'done', id: m.id, status: 'ok', flags: r.flags, partial: !!r.partial, finalResultId: finalId, finalStatus: r.final ? r.final.status : null, finalRows: r.final && r.final.rowCount !== undefined ? r.final.rowCount : null, lastStepResultId: lastStepId, durationMs: r.durationMs });
   } catch (e) {
     post({ type: 'result', id: m.id, status: 'internal', message: String(e && e.message) });
   }
