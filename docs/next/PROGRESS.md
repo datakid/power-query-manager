@@ -217,3 +217,34 @@
 
 ### Not done
 - Run in the top bar, the Changes split-button, the palette and the T1–T4 disclosure tiers: these belong to Phase 6 (WB-10 to WB-13).
+
+## Phase 6 — Workbench (6A and 6B so far)
+
+### Done
+- WB-1 `src/core/wb/deps.js`: query index, free-reference analysis with let/function/record scoping, cycles, layers, incremental `updateMember`, upstream/downstream, `topoOrder` (T-WB-01).
+- WB-2 `src/core/wb/steps.js`, `step-kinds.js`: step model with spans, comment attribution, inputs, forward references, kinds, linearity, bypass detection (T-WB-02).
+- WB-3 `src/core/wb/let-edit.js`: move, insert, rename, delete, bypass, un-bypass, duplicate as text transforms with a change list (T-WB-03, 8 fixture variants × every operation × every position).
+- WB-4 `src/core/vba/outline.js`: procedures, parameters, declarations, options, entry points, event handlers, structural problems (T-WB-04).
+- WB-5 `src/core/wb/fuzzy.js`: ranges, ranking, diacritics, CJK and RTL, 10 000 items in under 30 ms (T-WB-05).
+- WB-6 `src/core/wb/m-gen.js`: filter, sort, remove/keep/rename columns, change type, remove duplicates, keep first rows, replace value; every generated step is executed in the engine in the test (T-WB-06). Step names are in `S.stepNames`.
+- WB-7 `engine.js`: `evaluateSteps` (one pass, each step forced once, dependants `skipped`, `upTo` for run-to-here) and `evaluateMany` (one context, per-member deadline, binding rounds through `next()`); equivalence with `runOnce` is asserted for every member and every step of every external fixture (T-WB-07).
+- WB-8 `src/core/wb/result-store.js` and worker protocol v2: store with LRU, pinning, groups and a cell budget; `run-steps`, `run-many`, per-result `rows`, `pin`, `release`, `evicted`; the runner gains `stream`, `runSteps`, `runMany`, generations and `rowsOf` (T-WB-08, unit and e2e).
+- WB-9 `run-plan.js`, `status.js`, `src/app/orchestrator.js`: run modes, FNV-1a fingerprints over normalised text, upstream fingerprints, binding keys and culture, stale tracking, ten-run history, stop at first error (T-WB-09).
+
+### Changed expectations
+- None of the existing tests were changed in this stretch.
+
+### Deviations
+- `StepRecord` is a new internal node kind in `eval.js` that returns the let's own thunks as a record, so each step is forced once without a self-referencing record literal.
+- `Thunk` no longer caches an error that is marked `retryable` (`NeedBinding`), so a member can resume after a binding is supplied in the same context.
+- Step names made unique as `Filtered Rows 1`, as `WB-6` writes it, although Excel itself writes `Filtered Rows1`.
+- `moveStep` and the other transforms refuse comma-first formatting with a reason, rather than reformatting it.
+- The worker messages `view` and `profile` from WB-8 are not built; they belong with the result dock (WB-16).
+
+### Blocked
+- Nothing blocks 6C, but `T-E-12` and `T-P-14b` still cannot run in the build sandbox.
+
+### Not done
+- The orchestrator is not wired into the app yet: the Run split-button, the navigator selection bar, the Queue tab and removing the coupling where selecting an item cancels a run all belong to WB-10 to WB-16.
+- Fixtures `many-queries.xlsx`, `macro-links.xlsm` and `cp932.xlsm` are not generated; the WB-9 e2e (run all on `many-queries.xlsx`, edit a staging query, run stale) needs `many-queries.xlsx`.
+- WB-10 to WB-28 (shell, navigator, tabs, palette, steps panel, result dock, graph, problems, sources, editor intelligence, VBA workbench, proof).
