@@ -1,10 +1,12 @@
-import { runQuery, serializeTableRows } from '../core/m/engine.js';
+import { runQuery, serializeTableRows, serializeResult, evaluateSteps, evaluateMany } from '../core/m/engine.js';
+import { ResultStore } from '../core/wb/result-store.js';
 import { MTable } from '../core/m/values.js';
 import { tableToDelimited } from '../core/export/csv.js';
 import { tableToJson, valueToJson } from '../core/export/json.js';
 import { tableToXlsx } from '../core/export/xlsx.js';
 
-let last = null;
+const store = new ResultStore();
+let lastId = null;
 const waiting = new Map();
 
 function post(message, transfer) {
@@ -16,41 +18,139 @@ function strip(r) {
   return rest;
 }
 
-async function run(m) {
-  const requestBinding = (kind, key) => new Promise((resolve) => {
+function baseOptions(m) {
+  return {
+    sectionText: m.sectionText,
+    queryName: m.queryName,
+    snapshot: m.snapshot,
+    bindings: new Map((m.bindings || []).map(([k, v]) => [k, v])),
+    culture: m.culture,
+    limits: m.limits,
+    useUpstream: m.useUpstream,
+    compareTo: m.compareTo,
+    previewRows: m.previewRows || 200,
+    now: m.now,
+    localOffsetMin: m.localOffsetMin
+  };
+}
+
+function keep(entry) {
+  const r = store.add(entry);
+  if (r.evicted.length) post({ type: 'evicted', resultIds: r.evicted });
+  if (lastId && !store.has(lastId)) lastId = null;
+  return r.id;
+}
+
+function askBinding(m) {
+  return (kind, key) => new Promise((resolve) => {
     waiting.set(`${m.id}:${key}`, resolve);
     post({ type: 'need-binding', id: m.id, kind, key });
   });
+}
+
+function preview(value, opts) {
+  return serializeResult(value, false, { maxRows: opts.previewRows });
+}
+
+async function run(m) {
+  const requestBinding = askBinding(m);
   try {
-    const bindings = new Map((m.bindings || []).map(([k, v]) => [k, v]));
-    const r = await runQuery({
-      sectionText: m.sectionText,
-      queryName: m.queryName,
-      snapshot: m.snapshot,
-      bindings,
-      culture: m.culture,
-      limits: m.limits,
-      useUpstream: m.useUpstream,
-      step: m.step,
-      compareTo: m.compareTo,
-      previewRows: m.previewRows || 200,
-      now: m.now,
-      localOffsetMin: m.localOffsetMin
-    }, requestBinding);
-    last = r.status === 'ok' ? { id: m.id, value: r.value, culture: m.culture } : null;
-    post({ type: 'result', id: m.id, ...strip(r) });
+    const r = await runQuery({ ...baseOptions(m), step: m.step }, requestBinding);
+    let resultId = null;
+    if (r.status === 'ok') {
+      resultId = keep({ value: r.value, culture: m.culture, member: m.queryName, step: m.step || null });
+      lastId = resultId;
+    }
+    post({ type: 'result', id: m.id, resultId, ...strip(r) });
   } catch (e) {
     post({ type: 'result', id: m.id, status: 'internal', message: String(e && e.message) });
   }
 }
 
+async function runSteps(m) {
+  const requestBinding = askBinding(m);
+  try {
+    const opts = baseOptions(m);
+    let r = null;
+    for (let round = 0; round < 50; round++) {
+      r = evaluateSteps(opts);
+      if (r.status !== 'need-binding') break;
+      const b = await requestBinding(r.kind, r.key);
+      if (!b) {
+        r = { status: 'error', error: { reason: 'DataSource.Error', message: `No file was provided for ${r.key}.`, detail: r.key } };
+        break;
+      }
+      opts.bindings.set(r.key, b);
+    }
+    if (r.status !== 'ok') {
+      post({ type: 'result', id: m.id, ...strip(r) });
+      return;
+    }
+    const group = store.newGroup();
+    const send = (st, name) => {
+      const { value, ...rest } = st;
+      let resultId = null;
+      let result = null;
+      if (st.status === 'ok') {
+        resultId = keep({ value, culture: m.culture, member: m.queryName, step: name, group });
+        result = preview(value, opts);
+      }
+      post({ type: 'step-result', id: m.id, resultId, result, ...rest, name });
+      return resultId;
+    };
+    for (const st of r.steps) send(st, st.name);
+    const finalId = send({ ...r.final }, null);
+    lastId = finalId;
+    post({ type: 'done', id: m.id, status: 'ok', flags: r.flags, finalResultId: finalId, durationMs: r.durationMs });
+  } catch (e) {
+    post({ type: 'result', id: m.id, status: 'internal', message: String(e && e.message) });
+  }
+}
+
+async function runMany(m) {
+  try {
+    const opts = baseOptions(m);
+    const compare = m.compareToMap ? new Map(m.compareToMap) : null;
+    if (compare) opts.compareTo = compare;
+    const gen = evaluateMany(opts, m.names);
+    let next = await gen.next();
+    while (!next.done) {
+      const ev = next.value;
+      if (ev.status === 'need-binding') {
+        const binding = await askBinding(m)(ev.kind, ev.key);
+        next = await gen.next(binding);
+        continue;
+      }
+      const { value, ...rest } = ev;
+      let resultId = null;
+      let result = null;
+      if (ev.status === 'ok') {
+        resultId = keep({ value, culture: m.culture, member: ev.name });
+        result = preview(value, opts);
+      }
+      post({ type: 'member-result', id: m.id, resultId, result, ...rest });
+      next = await gen.next();
+    }
+    post({ type: 'done', id: m.id, status: 'ok' });
+  } catch (e) {
+    post({ type: 'result', id: m.id, status: 'internal', message: String(e && e.message) });
+  }
+}
+
+function lookup(m) {
+  const id = m.resultId || lastId;
+  return id ? store.get(id) : undefined;
+}
+
 async function exportResult(m) {
+  const last = lookup(m);
   if (!last) {
     post({ type: 'exported', id: m.id, error: 'none' });
     return;
   }
   const v = last.value;
   const opts = m.options || {};
+  last.culture = last.culture || m.culture;
   try {
     let bytes;
     let mime = 'text/plain';
@@ -79,6 +179,10 @@ async function exportResult(m) {
 self.onmessage = (ev) => {
   const m = ev.data;
   if (m.type === 'run') run(m);
+  else if (m.type === 'run-steps') runSteps(m);
+  else if (m.type === 'run-many') runMany(m);
+  else if (m.type === 'pin') post({ type: 'pinned', id: m.id, ok: store.pin(m.resultId, m.pinned !== false) });
+  else if (m.type === 'release') post({ type: 'released', id: m.id, ok: store.release(m.resultId) });
   else if (m.type === 'binding') {
     const resolve = waiting.get(`${m.id}:${m.key}`);
     if (resolve) {
@@ -86,7 +190,8 @@ self.onmessage = (ev) => {
       resolve(m.binding);
     }
   } else if (m.type === 'rows') {
-    const rows = last && last.value instanceof MTable ? serializeTableRows(last.value, m.start, m.count) : [];
-    post({ type: 'rows', id: m.id, rows });
+    const entry = lookup(m);
+    const rows = entry && entry.value instanceof MTable ? serializeTableRows(entry.value, m.start, m.count) : [];
+    post({ type: 'rows', id: m.id, rows, evicted: !entry });
   } else if (m.type === 'export') exportResult(m);
 };
