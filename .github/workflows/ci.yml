@@ -26,8 +26,11 @@ jobs:
           set +e
           npm run test:browser 2>&1 | tee browser.log
           code=${PIPESTATUS[0]}
-          summary=$(grep -E '✘|[0-9]+ (passed|failed|flaky|skipped)|Error:|Expected|Received|Screenshot|pixels' browser.log | head -150 | cut -c1-240 | awk '{printf "%s%%0A", $0}')
-          echo "::notice title=browser summary::$summary"
+          enc() { head -c 3500 | awk '{printf "%s%%0A", $0}'; }
+          grep -E '^ +[0-9]+ (passed|failed|flaky|skipped|did not run)' browser.log | enc | { read -r x; echo "::notice title=browser totals::$x"; }
+          grep -E '^ +✘' browser.log | grep -v 'visual.spec' | cut -c1-220 | enc | { read -r x; echo "::notice title=browser failures except visual::$x"; }
+          grep -cE '^ +✘.*visual.spec' browser.log | { read -r n; echo "::notice title=browser visual failures::$n"; }
+          awk '/^ +[0-9]+\) \[chromium\]/ {p = ($0 !~ /visual.spec/); n=0} p && n<16 {print; n++}' browser.log | cut -c1-200 | enc | { read -r x; echo "::notice title=browser failure details::$x"; }
           exit $code
       - if: failure()
         uses: actions/upload-artifact@v4
