@@ -6,9 +6,11 @@ import { normalizeQueryText } from '../core/pq/section.js';
 const TERMINAL = new Set(['ok', 'error', 'stopped', 'skipped']);
 
 export class Orchestrator {
-  constructor({ runner, context }) {
+  constructor({ runner, context, prepare = null }) {
     this.runner = runner;
     this.context = context;
+    this.prepare = prepare;
+    this.previews = new Map();
     this.book = new StatusBook();
     this.listeners = new Set();
     this.index = null;
@@ -82,7 +84,7 @@ export class Orchestrator {
     this.refresh();
     const plan = planRun(this.index, mode, { ...options, statuses: this.statuses() });
     if (plan.kind === 'none') return { status: 'nothing', plan };
-    const ctx = this.context();
+    const ctx = { ...this.context(), ...(this.prepare ? await this.prepare() : {}) };
     const fps = new Map(this.fps);
     const names = plan.kind === 'steps' ? [plan.name] : plan.names;
     if (!names.length) return { status: 'nothing', plan };
@@ -111,6 +113,8 @@ export class Orchestrator {
         if (m.type !== 'member-result') return;
         const status = TERMINAL.has(m.status) ? m.status : 'error';
         this.book.finish(m.name, { status, fingerprint: fps.get(m.name), rows: m.rowCount === undefined ? null : m.rowCount, durationMs: m.durationMs, resultId: m.resultId || null, compare: m.compare || null, bindingKeys: this.book.record(m.name).bindingKeys });
+        if (status === 'ok' && m.resultId) this.previews.set(m.name, { result: m.result, resultId: m.resultId, durationMs: m.durationMs, flags: m.flags || [], compare: m.compare || null, generation: m.generation, fingerprint: fps.get(m.name) });
+        else this.previews.delete(m.name);
         this.emit({ type: 'member', name: m.name, status, event: m });
         const next = names[names.indexOf(m.name) + 1];
         if (next && !stopped) {
@@ -145,6 +149,7 @@ export class Orchestrator {
       this.emit({ type: 'member', name, status: r.status, event: result });
       return;
     }
+    this.previews.delete(name);
     const status = result.finalStatus === 'ok' ? 'ok' : result.finalStatus === 'stopped' ? 'stopped' : 'error';
     this.book.finish(name, { status, fingerprint: fps.get(name), rows: result.finalRows === undefined ? null : result.finalRows, durationMs: result.durationMs, resultId: result.finalResultId || null });
     this.emit({ type: 'member', name, status, event: result });
@@ -155,4 +160,12 @@ export class Orchestrator {
     this.runner.cancel();
     return true;
   }
+}
+
+export function previewFor(orch, name, runner) {
+  const p = orch.previews.get(name);
+  if (!p) return null;
+  if (!runner.isCurrent(p.generation)) return null;
+  if (orch.fps.get(name) !== p.fingerprint) return null;
+  return p;
 }

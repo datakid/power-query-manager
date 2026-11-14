@@ -296,8 +296,26 @@ export const S = {
     toggle: 'Steps',
     toggleAria: 'Show or hide the steps panel'
   },
+  batch: {
+    summary: (c) => {
+      const parts = [];
+      if (c.ok) parts.push(`${c.ok} ran`);
+      if (c.error) parts.push(`${c.error} failed`);
+      if (c.stopped) parts.push(`${c.stopped} stopped`);
+      if (c.cancelled) parts.push(`${c.cancelled} cancelled`);
+      if (c.stale) parts.push(`${c.stale} out of date`);
+      return parts.join(', ');
+    },
+    nothing: 'Nothing to run.',
+    busy: 'A run is already in progress.',
+    running: (i, n, name) => `Running ${i} of ${n}: ${name}`,
+    state: { ok: 'Ran', error: 'Error', stale: 'Out of date', running: 'Running', queued: 'Waiting', cancelled: 'Cancelled', stopped: 'Stopped', never: 'Not run', skipped: 'Function' }
+  },
   stepKind: { source: 'Source', navigate: 'Navigate', filter: 'Filter', sort: 'Sort', 'add-column': 'Column', 'remove-columns': 'Columns', rename: 'Rename', types: 'Types', group: 'Group', merge: 'Merge', append: 'Append', pivot: 'Pivot', expand: 'Expand', promote: 'Headers', custom: 'Custom' },
   cmd: {
+    runAll: 'Run all queries',
+    runStale: 'Run the queries that are out of date',
+    runDownstream: 'Run this query and everything that uses it',
     toggleInspector: 'Show or hide the steps panel',
     openFile: 'Choose file',
     run: 'Run the current query',

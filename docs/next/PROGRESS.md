@@ -262,3 +262,8 @@
 - Tests: `tests/e2e/steps-panel.spec.js` (T-WB-14, 7 tests).
 - Not done: drag-to-reorder grip, the insert-step affordance, the Depends on / Used by block and impact line, step results refreshed automatically after Run (it needs an explicit "Evaluate steps"), the narrow-screen presentation of the panel, and run-to-here result paging beyond the 200-row preview for the legacy run path.
 - Renamed the panel button "Evaluate steps" because existing tests (and users of assistive technology) find Run by a name starting with "Run".
+
+### WB-9 (UI wiring)
+- The orchestrator now drives Run all (Ctrl/Cmd+Alt+Enter), Run stale (Ctrl/Cmd+Shift+Enter) and Run with downstream (palette); rail dots carry a status (ran, error, out of date, stopped, waiting, function); the status line summarises a batch; a finished query opens with its stored result without running again; selecting another item no longer cancels a running batch; Escape or Cancel stops it and marks the rest cancelled (`tests/e2e/run-modes.spec.js`).
+- `indexSection` now treats `let f = (x) => ... in f` as a function, as the rail already did.
+- Not done: the Queue tab (a per-batch list with durations), Run selected (needs multi-select in the navigator), and the Run split-button menu; the commands are reachable from the keyboard and the palette only.

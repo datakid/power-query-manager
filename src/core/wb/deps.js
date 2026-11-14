@@ -35,7 +35,13 @@ function analyse(ast, names, own, known) {
 }
 
 function isFn(ast) {
-  return !!ast && ast.t === 'Function';
+  if (!ast) return false;
+  if (ast.t === 'Function') return true;
+  if (ast.t === 'Let' && ast.body.t === 'Identifier') {
+    const b = ast.bindings.find((x) => x.name === ast.body.name);
+    return !!b && b.expr.t === 'Function';
+  }
+  return false;
 }
 
 function finish(members, refs, dynamic, unknown, known) {

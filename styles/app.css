@@ -1479,3 +1479,41 @@ dialog.palette {
     display: none;
   }
 }
+
+.dot-loaded[data-status="ok"],
+.dot-conn[data-status="ok"] {
+  background: var(--celadon-ink);
+  border-color: var(--celadon-ink);
+}
+
+.dot-loaded[data-status="error"],
+.dot-conn[data-status="error"] {
+  background: var(--madder);
+  border-color: var(--madder);
+}
+
+.dot-loaded[data-status="stale"],
+.dot-conn[data-status="stale"] {
+  background: transparent;
+  border: 1.5px solid var(--ochre);
+}
+
+.dot-loaded[data-status="stopped"],
+.dot-loaded[data-status="cancelled"],
+.dot-conn[data-status="stopped"],
+.dot-conn[data-status="cancelled"] {
+  background: var(--ochre);
+  border-color: var(--ochre);
+}
+
+.dot-loaded[data-status="queued"],
+.dot-conn[data-status="queued"] {
+  background: transparent;
+  border: 1.5px solid var(--line-strong);
+}
+
+.dot-loaded[data-status="running"],
+.dot-conn[data-status="running"] {
+  border: 1.5px solid var(--slate);
+  background: var(--slate-soft);
+}

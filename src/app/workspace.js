@@ -10,6 +10,7 @@ import { parseExpressionText, MParseError } from '../core/m/parser.js';
 import { readTable } from '../core/cells.js';
 import { formatsFor } from '../ui/formats.js';
 import { Runner } from './runner.js';
+import { Orchestrator, previewFor } from './orchestrator.js';
 
 function loadLabel(load) {
   if (load.kind === 'table') return `${S.loadedToTable} · ${load.sheet}!${load.ref}${load.alsoModel ? ` · ${S.loadedToModel}` : ''}`;
@@ -37,6 +38,29 @@ export class Workspace {
     });
     host.append(this.root);
     this.buildMain();
+    this.orchestrator = new Orchestrator({
+      runner: this.runner,
+      context: () => ({
+        sectionText: this.session.currentSectionText(),
+        textOf: (n) => this.session.textOf({ type: 'query', name: n }),
+        culture: this.settings.culture,
+        askBinding: (kind, key) => this.askBinding(kind, key)
+      }),
+      prepare: async () => {
+        const snapshot = await this.session.snapshot();
+        const set = this.settings;
+        return {
+          snapshot,
+          bindings: [...this.session.bindings].map(([k, b]) => [k, { bytes: b.bytes, workbook: b.workbook }]),
+          limits: { timeoutMs: set.timeoutS * 1000, maxRows: set.rowCap },
+          useUpstream: set.useUpstream,
+          previewRows: 200,
+          now: new Date().toISOString(),
+          localOffsetMin: -new Date().getTimezoneOffset()
+        };
+      }
+    });
+    this.orchestrator.on((e) => this.onBatchEvent(e));
     this.stepResults = new Map();
     this.stepsPanel = new StepsPanel(this.inspector, this.stepActions());
     this.drillStack = [];
@@ -122,6 +146,48 @@ export class Workspace {
     this.grid.el.hidden = true;
     this.messageEl = null;
     this.splitterSetup();
+  }
+
+  onBatchEvent(e) {
+    if (e.type === 'status' || e.type === 'member' || e.type === 'batch-start' || e.type === 'batch-end') this.paintStatuses();
+    if (e.type === 'status') {
+      const q = this.orchestrator.batch.names;
+      this.status.set({ note: S.batch.running(q.indexOf(e.name) + 1, q.length, e.name) });
+    }
+  }
+
+  paintStatuses() {
+    const statuses = this.orchestrator.statuses();
+    for (const li of this.rail.querySelectorAll('[role="treeitem"][data-type="query"]')) {
+      const dot = li.querySelector('.dot-loaded, .dot-conn');
+      if (!dot) continue;
+      const st = statuses.get(li.dataset.name) || 'never';
+      dot.dataset.status = st;
+      dot.title = S.batch.state[st] || '';
+    }
+  }
+
+  async runBatch(mode) {
+    if (this.runner.running || this.orchestrator.running) {
+      this.status.set({ note: S.batch.busy });
+      return true;
+    }
+    const item = this.item && this.item.type === 'query' ? this.item.name : null;
+    this.setRunning(true);
+    const r = await this.orchestrator.run(mode, { current: item });
+    this.setRunning(false);
+    this.paintStatuses();
+    if (r.status === 'nothing') this.status.set({ note: S.batch.nothing });
+    else this.status.set({ note: S.batch.summary(this.orchestrator.counts()) });
+    if (item) this.showStored(item);
+    return true;
+  }
+
+  showStored(name) {
+    const p = previewFor(this.orchestrator, name, this.runner);
+    if (!p) return false;
+    this.renderResult({ status: 'ok', result: p.result, durationMs: p.durationMs, flags: p.flags, compare: p.compare }, false, p.resultId);
+    return true;
   }
 
   toggleInspector() {
@@ -381,6 +447,7 @@ export class Workspace {
     if (!s.modules.length) tree.append(h('li', { role: 'presentation', class: 'item-meta rail-label' }, S.noMacros));
     this.rail.append(tree, keep);
     this.syncRailSelection();
+    this.paintStatuses();
   }
 
   railItems() {
@@ -485,7 +552,7 @@ export class Workspace {
   }
 
   select(item) {
-    this.cancel();
+    if (!this.orchestrator.running) this.cancel();
     this.item = item;
     this.drillStack = [];
     this.syncRailSelection();
@@ -525,6 +592,7 @@ export class Workspace {
     this.clearResult();
     if (isQuery) this.checkLive(this.editor.getText());
     this.setPane('code');
+    if (isQuery && this.showStored(item.name)) this.setPane('result');
   }
 
   onEditorChange(text) {
@@ -535,7 +603,10 @@ export class Workspace {
     this.markEdited(this.item);
     this.stepResults = new Map();
     clearTimeout(this.stepsTimer);
-    this.stepsTimer = setTimeout(() => this.refreshSteps(), 150);
+    this.stepsTimer = setTimeout(() => {
+      this.refreshSteps();
+      this.paintStatuses();
+    }, 150);
     clearTimeout(this.liveTimer);
     if (this.item.type === 'query') this.liveTimer = setTimeout(() => this.checkLive(text), 250);
     else this.liveTimer = setTimeout(() => this.checkModule(text), 300);

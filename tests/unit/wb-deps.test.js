@@ -91,9 +91,9 @@ test('T-WB-01: a member that fails to parse at first is unknown, not an edge', (
   assert.deepEqual([...ix.refs.get('B')], []);
 });
 
-test('T-WB-01: functions are flagged', () => {
-  const ix = indexSection(section(['F', '(x) => x'], ['V', '1']));
-  assert.deepEqual(ix.members.map((m) => m.isFunction), [true, false]);
+test('T-WB-01: functions are flagged, including a let that returns one', () => {
+  const ix = indexSection(section(['F', '(x) => x'], ['V', '1'], ['W', 'let f = (x) => x in f'], ['U', 'let f = (x) => x, y = 1 in y']));
+  assert.deepEqual(ix.members.map((m) => m.isFunction), [true, false, true, false]);
 });
 
 test('T-WB-01: a thousand members index in under 300 ms', () => {

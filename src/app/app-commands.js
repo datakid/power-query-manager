@@ -7,6 +7,9 @@ export function buildRegistry(app) {
   const needsFile = (a) => (a.ws ? true : 'Open a workbook first.');
   r.register({ id: 'openFile', keys: ['Mod+O'], surfaces: ['T3'], run: (a) => a.input.click() });
   r.register({ id: 'run', keys: ['Mod+Enter'], surfaces: ['T1'], enabled: needsFile, run: (a) => (a.ws ? a.ws.run() : false) });
+  r.register({ id: 'runStale', keys: ['Mod+Shift+Enter'], surfaces: ['T3'], enabled: needsFile, run: (a) => (a.ws ? a.ws.runBatch('run-stale') : false) });
+  r.register({ id: 'runAll', keys: ['Mod+Alt+Enter'], surfaces: ['T3'], enabled: needsFile, run: (a) => (a.ws ? a.ws.runBatch('run-all') : false) });
+  r.register({ id: 'runDownstream', keys: [], surfaces: ['T3'], enabled: (a) => (a.ws && a.ws.item && a.ws.item.type === 'query' ? true : 'Open a query first.'), run: (a) => (a.ws ? a.ws.runBatch('run-downstream') : false) });
   r.register({ id: 'cancel', keys: ['Escape'], surfaces: ['T1'], enabled: (a) => (a.ws && a.ws.runner.running ? true : 'Nothing is running.'), run: (a) => (a.ws ? a.ws.cancel() : false) });
   r.register({ id: 'download', keys: ['Mod+S'], surfaces: ['T1'], enabled: needsFile, run: (a) => a.ws && a.openDownload() });
   r.register({ id: 'export', keys: ['Mod+Shift+E'], surfaces: ['T3'], enabled: needsFile, run: (a) => a.ws && a.openExport() });
