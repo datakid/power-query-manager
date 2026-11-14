@@ -19,18 +19,31 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:lint
-      - run: npm run test:unit
-      - run: npx playwright install --with-deps chromium
+      - name: Unit tests
+        if: ${{ !cancelled() }}
+        run: |
+          set +e
+          npm run test:unit 2>&1 | tee unit.log
+          code=${PIPESTATUS[0]}
+          sh scripts/ci-annotate.sh "unit totals" unit.log -E '^# (tests|pass|fail|skipped)'
+          sh scripts/ci-annotate.sh "unit failures" unit.log -E '^ *not ok|^ *error:|^ *expected:|^ *actual:|^ *location:'
+          exit $code
+      - name: Install browser
+        if: ${{ !cancelled() }}
+        run: npx playwright install --with-deps chromium
       - name: Browser tests
+        if: ${{ !cancelled() }}
         run: |
           set +e
           npm run test:browser 2>&1 | tee browser.log
           code=${PIPESTATUS[0]}
-          enc() { head -c 3500 | awk '{printf "%s%%0A", $0}'; }
-          grep -E '^ +[0-9]+ (passed|failed|flaky|skipped|did not run)' browser.log | enc | { read -r x; echo "::notice title=browser totals::$x"; }
-          grep -E '^ +✘' browser.log | grep -v 'visual.spec' | cut -c1-220 | enc | { read -r x; echo "::notice title=browser failures except visual::$x"; }
-          grep -cE '^ +✘.*visual.spec' browser.log | { read -r n; echo "::notice title=browser visual failures::$n"; }
-          awk '/^ +[0-9]+\) \[chromium\]/ {p = ($0 !~ /visual.spec/); n=0} p && n<16 {print; n++}' browser.log | cut -c1-200 | enc | { read -r x; echo "::notice title=browser failure details::$x"; }
+          sh scripts/ci-annotate.sh "browser totals" browser.log -E '^ +[0-9]+ (passed|failed|flaky|skipped|did not run)'
+          grep -E '^ +✘' browser.log | grep -v 'visual.spec' > browser-nonvisual.log
+          sh scripts/ci-annotate.sh "browser failures except visual" browser-nonvisual.log -E '.'
+          grep -E '^ +✘.*visual.spec' browser.log | sort -u | wc -l > browser-visual.log
+          sh scripts/ci-annotate.sh "browser visual failure count" browser-visual.log -E '.'
+          awk '/^ +[0-9]+\) \[chromium\]/ {p = ($0 !~ /visual.spec/); n=0} p && n<16 {print; n++}' browser.log > browser-details.log
+          sh scripts/ci-annotate.sh "browser failure details" browser-details.log -E '.'
           exit $code
       - if: failure()
         uses: actions/upload-artifact@v4
