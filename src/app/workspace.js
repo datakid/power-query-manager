@@ -2,7 +2,10 @@ import { h, clear, svgImg } from '../ui/dom.js';
 import { S, fmt, errorMessage } from '../ui/strings.js';
 import { Editor } from '../ui/editor.js';
 import { Grid, cellDisplay } from '../ui/grid.js';
-import { popover, bindingDialog, differencesDialog } from '../ui/dialogs.js';
+import { popover, bindingDialog, differencesDialog, confirmDialog } from '../ui/dialogs.js';
+import { StepsPanel } from '../ui/wb/steps-panel.js';
+import { stepsOf } from '../core/wb/steps.js';
+import { canMove, moveStep, renameStep, deleteStep, bypassStep, unbypassStep, duplicateStep } from '../core/wb/let-edit.js';
 import { parseExpressionText, MParseError } from '../core/m/parser.js';
 import { readTable } from '../core/cells.js';
 import { formatsFor } from '../ui/formats.js';
@@ -24,7 +27,8 @@ export class Workspace {
     this.rail = h('nav', { class: 'rail', id: 'rail', 'aria-label': S.itemsAria });
     this.railOpen = false;
     this.main = h('section', { class: 'main', 'data-pane': 'code' });
-    this.root = h('div', { class: 'workspace', 'data-rail': 'closed' }, this.rail, this.main);
+    this.inspector = h('aside', { class: 'inspector', 'aria-label': S.stepsPanel.aria });
+    this.root = h('div', { class: 'workspace', 'data-rail': 'closed', 'data-inspector': 'open', 'data-kind': 'query' }, this.rail, this.main, this.inspector);
     this.rail.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape' && this.railOpen) {
         ev.stopPropagation();
@@ -33,12 +37,16 @@ export class Workspace {
     });
     host.append(this.root);
     this.buildMain();
+    this.stepResults = new Map();
+    this.stepsPanel = new StepsPanel(this.inspector, this.stepActions());
     this.drillStack = [];
     this.lastRun = null;
     this.cachedCompare = new Map();
     this.runToken = 0;
     this.onEditCallbacks = [];
     this.resizer();
+    this.editor.textarea.addEventListener('keyup', () => this.syncCaretStep());
+    this.editor.textarea.addEventListener('mouseup', () => this.syncCaretStep());
   }
 
   onEdit(fn) {
@@ -79,8 +87,9 @@ export class Workspace {
     this.title = h('h2', { class: 'item-title' });
     this.meta = h('span', { class: 'item-meta' });
     this.revertBtn = h('button', { class: 'btn btn-quiet', type: 'button', hidden: true, onclick: () => this.revert() }, S.revert);
+    this.inspectorToggle = h('button', { class: 'btn btn-quiet inspector-toggle', type: 'button', 'aria-expanded': 'true', 'aria-label': S.stepsPanel.toggleAria, onclick: () => this.toggleInspector() }, S.stepsPanel.toggle);
     this.railToggle = h('button', { class: 'btn btn-quiet rail-toggle', type: 'button', 'aria-controls': 'rail', 'aria-expanded': false, onclick: () => this.setRailOpen(!this.railOpen, false) }, S.items);
-    this.head = h('div', { class: 'item-head' }, h('div', { class: 'item-title-row' }, this.railToggle, this.title), h('div', { class: 'item-actions' }, this.meta, this.revertBtn));
+    this.head = h('div', { class: 'item-head' }, h('div', { class: 'item-title-row' }, this.railToggle, this.title), h('div', { class: 'item-actions' }, this.meta, this.revertBtn, this.inspectorToggle));
     this.info = h('div', { class: 'info-strip', hidden: true });
     this.editorHost = h('div', { class: 'editor-host' });
     this.editorHost.style.display = 'contents';
@@ -113,6 +122,155 @@ export class Workspace {
     this.grid.el.hidden = true;
     this.messageEl = null;
     this.splitterSetup();
+  }
+
+  toggleInspector() {
+    const open = this.root.dataset.inspector !== 'open';
+    this.root.dataset.inspector = open ? 'open' : 'closed';
+    this.inspectorToggle.setAttribute('aria-expanded', String(open));
+    if (open) this.refreshSteps();
+    return true;
+  }
+
+  lineOfOffset(text, at) {
+    return text.slice(0, at).split(/\r\n|\r|\n/).length;
+  }
+
+  caretStep(model) {
+    if (!model || !model.steps || !model.steps.length) return null;
+    const at = this.editor.caretOffset();
+    const text = this.editor.getText();
+    let found = null;
+    for (const st of model.steps) if (text.lastIndexOf('\n', st.parts.coreStart - 1) + 1 <= at) found = st.name;
+    return found || model.steps[0].name;
+  }
+
+  refreshSteps(focusName = null) {
+    if (!this.item || this.item.type !== 'query') {
+      this.stepsPanel.render(null);
+      return;
+    }
+    const model = stepsOf(this.editor.getText(), 0, { members: new Set(this.session.queries.map((q) => q.name)) });
+    this.stepsModel = model;
+    this.stepsPanel.setResults(this.stepResults);
+    this.stepsPanel.render(model, this.caretStep(model));
+    if (focusName) this.stepsPanel.focusStep(focusName);
+  }
+
+  syncCaretStep() {
+    if (!this.stepsModel || this.item === null || this.item.type !== 'query') return;
+    const name = this.caretStep(this.stepsModel);
+    if (name !== this.stepsPanel.caret) this.stepsPanel.render(this.stepsModel, name);
+  }
+
+  applySteps(res, done, focusName) {
+    if (!res.ok) {
+      this.stepsPanel.announce(res.reason);
+      this.status.set({ note: res.reason });
+      return false;
+    }
+    this.editor.replaceDiff(res.text);
+    this.refreshSteps(focusName);
+    this.stepsPanel.announce(done);
+    return true;
+  }
+
+  stepActions() {
+    const text = () => this.editor.getText();
+    return {
+      go: (st) => {
+        this.editor.goto(this.lineOfOffset(text(), st.parts.coreStart), 1);
+        this.showStepResult(st.name);
+      },
+      move: async (st, to) => {
+        const model = stepsOf(text(), 0);
+        const can = canMove(model, st.index, to);
+        if (!can.ok) {
+          this.stepsPanel.announce(can.reason);
+          this.status.set({ note: can.reason });
+          return;
+        }
+        if (can.mode === 'rewire') {
+          const yes = await confirmDialog({ title: S.stepsPanel.rewireTitle, body: S.stepsPanel.rewireBody(st.name), confirmLabel: S.stepsPanel.rewireConfirm, cancelLabel: S.stepsPanel.cancel });
+          if (!yes) {
+            this.stepsPanel.focusStep(st.name);
+            return;
+          }
+        }
+        this.applySteps(moveStep(text(), st.index, to, { rewire: can.mode === 'rewire' }), S.stepsPanel.done.move(st.name), st.name);
+      },
+      rename: (st, name) => this.applySteps(renameStep(text(), st.index, name), S.stepsPanel.done.rename(name), name),
+      del: (st) => {
+        const next = this.stepsModel.steps[st.index + 1] || this.stepsModel.steps[st.index - 1];
+        this.applySteps(deleteStep(text(), st.index), S.stepsPanel.done.delete(st.name), next ? next.name : null);
+      },
+      bypass: (st) => this.applySteps(st.bypassed ? unbypassStep(text(), st.index) : bypassStep(text(), st.index), (st.bypassed ? S.stepsPanel.done.restore : S.stepsPanel.done.bypass)(st.name), st.name),
+      duplicate: (st) => this.applySteps(duplicateStep(text(), st.index), S.stepsPanel.done.duplicate(st.name), st.name),
+      runTo: (st) => this.runSteps(st.name),
+      runSteps: () => this.runSteps(null)
+    };
+  }
+
+  showStepResult(name) {
+    const r = this.stepResults.get(name);
+    if (!r) return;
+    if (r.status === 'ok' && r.result) this.renderResult({ status: 'ok', result: r.result, durationMs: r.durationMs, flags: [], compare: null }, true, r.resultId);
+    else if (r.status === 'error') this.renderResult({ status: 'error', error: r.error }, true);
+  }
+
+  async runParams(item) {
+    const s = this.session;
+    const set = this.settings;
+    const snapshot = await s.snapshot();
+    return {
+      sectionText: s.currentSectionText(),
+      queryName: item.name,
+      snapshot,
+      bindings: [...s.bindings].map(([k, b]) => [k, { bytes: b.bytes, workbook: b.workbook }]),
+      culture: set.culture,
+      limits: { timeoutMs: set.timeoutS * 1000, maxRows: set.rowCap },
+      useUpstream: set.useUpstream,
+      previewRows: 200,
+      now: new Date().toISOString(),
+      localOffsetMin: -new Date().getTimezoneOffset()
+    };
+  }
+
+  async runSteps(upTo) {
+    const item = this.item;
+    if (!item || item.type !== 'query' || this.runner.running) return;
+    const model = stepsOf(this.editor.getText(), 0);
+    if (model.shape !== 'let') return;
+    const token = ++this.runToken;
+    this.setPane('result');
+    this.setRunning(true);
+    const params = await this.runParams(item);
+    const results = new Map();
+    let final = null;
+    const res = await this.runner.runSteps({ ...params, upTo }, {
+      onNeedBinding: (kind, key) => this.askBinding(kind, key),
+      onEvent: (m) => {
+        if (m.type !== 'step-result') return;
+        const entry = { status: m.status, rowCount: m.rowCount, durationMs: m.durationMs, result: m.result, resultId: m.resultId, error: m.error, cause: m.cause };
+        if (m.name === null || m.name === undefined) final = entry;
+        else results.set(m.name, entry);
+      }
+    });
+    if (token !== this.runToken) return;
+    this.setRunning(false);
+    if (res.status !== 'ok') {
+      this.renderResult(res, false);
+      return;
+    }
+    this.stepResults = results;
+    this.refreshSteps();
+    const shown = upTo ? results.get(upTo) : final;
+    if (shown && shown.status === 'ok' && shown.result) this.renderResult({ status: 'ok', result: shown.result, durationMs: shown.durationMs || res.durationMs || 0, flags: res.flags || [], compare: null }, !!upTo, shown.resultId);
+    else if (shown && shown.status === 'error') this.renderResult({ status: 'error', error: shown.error }, true);
+    else if (shown && shown.status === 'skipped') {
+      const failed = [...results].find(([, v]) => v.status === 'error');
+      if (failed) this.renderResult({ status: 'error', error: failed[1].error }, true);
+    } else if (shown && shown.status === 'stopped') this.renderResult({ status: 'stopped', code: shown.code || 'm.timeout', detail: shown.detail }, true);
   }
 
   setRailOpen(open, returnFocus) {
@@ -335,6 +493,9 @@ export class Workspace {
     const s = this.session;
     const isQuery = item.type === 'query';
     this.main.classList.toggle('is-vba', !isQuery);
+    this.root.dataset.kind = isQuery ? 'query' : 'vba';
+    this.inspectorToggle.hidden = !isQuery;
+    this.stepResults = new Map();
     this.runbar.hidden = !isQuery;
     this.resultPanel.hidden = !isQuery;
     this.segmented.hidden = !isQuery;
@@ -342,6 +503,7 @@ export class Workspace {
     this.editor.setLanguage(isQuery ? 'm' : 'vba');
     this.editor.setLabel(S.editorAriaFor(isQuery ? S.editorAria : S.moduleAria, item.name));
     this.editor.setText(s.textOf(item));
+    this.refreshSteps();
     this.editor.setError(null);
     const ed = isQuery ? s.queryEditable() : s.moduleEditable(item.name);
     this.editor.setReadOnly(!ed.editable);
@@ -371,6 +533,9 @@ export class Workspace {
     s.setText(this.item, text);
     this.revertBtn.hidden = !s.isEdited(this.item);
     this.markEdited(this.item);
+    this.stepResults = new Map();
+    clearTimeout(this.stepsTimer);
+    this.stepsTimer = setTimeout(() => this.refreshSteps(), 150);
     clearTimeout(this.liveTimer);
     if (this.item.type === 'query') this.liveTimer = setTimeout(() => this.checkLive(text), 250);
     else this.liveTimer = setTimeout(() => this.checkModule(text), 300);
@@ -543,7 +708,7 @@ export class Workspace {
     return false;
   }
 
-  renderResult(res, isStep) {
+  renderResult(res, isStep, resultId = null) {
     this.clearMessage();
     clear(this.steps);
     this.diffLabel.hidden = true;
@@ -596,7 +761,7 @@ export class Workspace {
     const secs = (res.durationMs / 1000).toFixed(2);
     if (r.kind === 'table') {
       const t = r.value;
-      this.showTable(t, true);
+      this.showTable(t, true, resultId);
       this.status.set({ run: { rows: t.rowCount, secs }, compare: isStep ? null : res.compare, flags: res.flags });
       this.pendingDiffs = res.compare && res.compare.diffs ? new Set(res.compare.diffs.map(([row, col]) => `${row}:${col}`)) : null;
       this.diffLabel.hidden = !(res.compare && res.compare.count > 0);
@@ -647,11 +812,11 @@ export class Workspace {
     this.grid.rerender();
   }
 
-  showTable(t, remote) {
+  showTable(t, remote, resultId = null) {
     this.clearMessage();
     this.grid.el.hidden = false;
     this.grid.setCulture(this.settings.culture);
-    this.grid.setData({ columns: t.columns, rowCount: t.rowCount, rows: t.rows, loader: remote && t.rowCount > t.rows.length ? (start, count) => this.runner.rows(start, count) : null });
+    this.grid.setData({ columns: t.columns, rowCount: t.rowCount, rows: t.rows, loader: remote && t.rowCount > t.rows.length ? (start, count) => this.runner.rows(start, count, { resultId }) : null });
     this.capNotice.hidden = !t.truncated;
     this.capNotice.textContent = t.truncated ? S.rowCapShown(formatsFor(this.settings.culture).integer.format(t.rows.length)) : '';
     this.grid.el.setAttribute('aria-label', S.resultAria(this.item ? this.item.name : ''));

@@ -254,3 +254,11 @@
 - `src/ui/wb/palette.js`: Ctrl/Cmd+K and Ctrl/Cmd+Shift+P open a combobox over queries, modules and commands, with `>` commands, `@` procedures, `#` steps of the open query and `:` go to line; disabled commands show their reason (T-WB-13 e2e).
 - Changed expectations: the shortcut sheet is now built from the registry (its rows and wording changed); the top bar gains a Search button; all 40 visual baselines were refreshed with `--update-snapshots=all` because the earlier updates had stayed inside the 0.2 % tolerance and kept stale images.
 - Not done: the Run modes (`run stale`, `run all`) are not commands yet because the orchestrator is not wired to the UI, so `>run stale` from the acceptance story does not exist yet.
+
+### WB-14 (partial): the Steps panel
+- `src/ui/wb/steps-panel.js` and an inspector column in the workspace (visible from 1100 px for queries, toggled with Ctrl/Cmd+Alt+B or the Steps button): every step with a kind chip, bypass tag, row delta and a warning for a forward reference; keyboard rows (arrows, Home/End, Enter go to step, F2 rename in place, Delete, B bypass/restore, Ctrl+D duplicate, Alt+Shift+Up/Down move, Ctrl+F10 run to here) and a menu for the same actions.
+- Every edit is a text transform from `let-edit.js` applied through `Editor.replaceDiff`, so it lands in the editor's own undo stack and in the dirty/Changes model; a refused edit says why in a live region and in the status line; a move that needs rewiring asks first.
+- "Evaluate steps" runs `runSteps`; each step gets a status bead, a row count and its own stored result, and clicking a step shows that result in the grid (paged through its result id).
+- Tests: `tests/e2e/steps-panel.spec.js` (T-WB-14, 7 tests).
+- Not done: drag-to-reorder grip, the insert-step affordance, the Depends on / Used by block and impact line, step results refreshed automatically after Run (it needs an explicit "Evaluate steps"), the narrow-screen presentation of the panel, and run-to-here result paging beyond the 200-row preview for the legacy run path.
+- Renamed the panel button "Evaluate steps" because existing tests (and users of assistive technology) find Run by a name starting with "Run".

@@ -238,6 +238,23 @@ export class Editor {
     this.replaceRange(lineStart, lineEnd, next.join('\n'), Math.max(lineStart, s + firstDelta), e + total);
   }
 
+  replaceDiff(next, caret = null) {
+    const cur = this.textarea.value;
+    const max = Math.min(cur.length, next.length);
+    let a = 0;
+    while (a < max && cur[a] === next[a]) a++;
+    let b = 0;
+    while (b < max - a && cur[cur.length - 1 - b] === next[next.length - 1 - b]) b++;
+    if (a === cur.length && a === next.length) return;
+    const at = caret === null ? next.length - b : caret;
+    this.textarea.focus({ preventScroll: true });
+    this.replaceRange(a, cur.length - b, next.slice(a, next.length - b), at, at);
+  }
+
+  caretOffset() {
+    return this.textarea.selectionStart;
+  }
+
   setText(text) {
     this.textarea.value = text;
     this.history = [{ value: text, start: 0, end: 0 }];

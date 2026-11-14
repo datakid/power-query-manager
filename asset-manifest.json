@@ -1,5 +1,5 @@
 {
-  "version": "148bbf84c0422621",
+  "version": "3b53347930598fe5",
   "files": [
     "./",
     "index.html",
@@ -115,6 +115,7 @@
     "src/ui/print-render.js",
     "src/ui/strings.js",
     "src/ui/wb/palette.js",
+    "src/ui/wb/steps-panel.js",
     "src/workers/m-worker.js",
     "styles/app.css",
     "styles/editor.css",
