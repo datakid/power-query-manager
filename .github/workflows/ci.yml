@@ -21,7 +21,14 @@ jobs:
       - run: npm run test:lint
       - run: npm run test:unit
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:browser
+      - name: Browser tests
+        run: |
+          set +e
+          npm run test:browser 2>&1 | tee browser.log
+          code=${PIPESTATUS[0]}
+          summary=$(grep -E '✘|[0-9]+ (passed|failed|flaky|skipped)|Error:|Expected|Received|Screenshot|pixels' browser.log | head -150 | cut -c1-240 | awk '{printf "%s%%0A", $0}')
+          echo "::notice title=browser summary::$summary"
+          exit $code
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
